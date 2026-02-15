@@ -1,6 +1,6 @@
 # GWS Homelab
 
-.PHONY: help setup ping bootstrap deploy stacks upgrade check
+.PHONY: help setup ping deploy stacks upgrade check
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -12,9 +12,6 @@ setup: ## Install Ansible + dependencies
 
 ping: ## Test SSH to all hosts
 	ansible all -m ping
-
-bootstrap: ## First-time setup (run once after flash)
-	ansible-playbook playbooks/bootstrap.yml
 
 deploy: ## Apply full configuration
 	ansible-playbook playbooks/site.yml
