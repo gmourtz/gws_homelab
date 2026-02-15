@@ -96,6 +96,26 @@
         dest: /etc/apt/apt.conf.d/20auto-upgrades
         mode: "0644"
 
+    # --- External storage ---
+    - name: Mount external data drive
+      ansible.posix.mount:
+        src: "{{ data_mount.src }}"
+        path: "{{ data_mount.path }}"
+        fstype: "{{ data_mount.fstype }}"
+        opts: "{{ data_mount.opts }}"
+        state: mounted
+      when: data_mount is defined
+
+    - name: Create data directory tree
+      ansible.builtin.file:
+        path: "{{ data_mount.path }}/{{ item }}"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: "0755"
+      loop: "{{ data_dirs | default([]) }}"
+      when: data_mount is defined
+
     # --- Docker ---
     - name: Add Docker GPG key
       ansible.builtin.get_url:
