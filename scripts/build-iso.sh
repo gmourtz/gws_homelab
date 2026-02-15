@@ -62,77 +62,34 @@ check_user_data
 
 # Clean up any previous build
 rm -rf "$WORK_DIR"
-mkdir -p "$WORK_DIR"
+rm -f "$OUTPUT_ISO"
+mkdir -p "$WORK_DIR/autoinstall"
 
-echo "==> Extracting source ISO..."
-xorriso -osirrox on -indev "$SOURCE_ISO" -extract / "$WORK_DIR/iso" 2>/dev/null
+# Prepare autoinstall files
+cp "${CLOUD_INIT_DIR}/user-data" "$WORK_DIR/autoinstall/user-data"
+touch "$WORK_DIR/autoinstall/meta-data"
 
-# ISO contents are read-only — fix permissions so we can modify them
-chmod -R u+w "$WORK_DIR/iso"
-
-echo "==> Injecting autoinstall config..."
-# Create the autoinstall directory on the ISO
-mkdir -p "$WORK_DIR/iso/autoinstall"
-cp "${CLOUD_INIT_DIR}/user-data" "$WORK_DIR/iso/autoinstall/user-data"
-
-# Create an empty meta-data file (required by cloud-init)
-touch "$WORK_DIR/iso/autoinstall/meta-data"
+# Extract just the GRUB config to modify it
+echo "==> Extracting GRUB config..."
+xorriso -osirrox on -indev "$SOURCE_ISO" \
+    -extract /boot/grub/grub.cfg "$WORK_DIR/grub.cfg" 2>/dev/null
 
 echo "==> Modifying GRUB to auto-trigger install..."
-# Modify GRUB config to add autoinstall parameter and reduce timeout
-GRUB_CFG="$WORK_DIR/iso/boot/grub/grub.cfg"
-if [[ -f "$GRUB_CFG" ]]; then
-    # Add autoinstall to the default boot entry's linux line
-    sed -i.bak 's|---$|--- autoinstall|' "$GRUB_CFG"
-    # Set timeout to 3 seconds (enough to interrupt if needed)
-    sed -i.bak 's/^set timeout=.*/set timeout=3/' "$GRUB_CFG"
-    rm -f "${GRUB_CFG}.bak"
-fi
+# Add autoinstall to the default boot entry's linux line
+sed -i.bak 's|---$|--- autoinstall|' "$WORK_DIR/grub.cfg"
+# Set timeout to 3 seconds (enough to interrupt if needed)
+sed -i.bak 's/^set timeout=.*/set timeout=3/' "$WORK_DIR/grub.cfg"
+rm -f "$WORK_DIR/grub.cfg.bak"
 
-echo "==> Repacking ISO..."
-# Extract MBR from original ISO for hybrid boot
-dd if="$SOURCE_ISO" bs=1 count=432 of="$WORK_DIR/mbr.bin" 2>/dev/null
-
-# Extract EFI partition
-EFI_START=$(xorriso -indev "$SOURCE_ISO" -report_el_torito as_mkisofs 2>&1 | grep -oP '(?<=-append_partition 2 0xEF )\S+' || true)
-
-xorriso -as mkisofs \
-    -r -V "UBUNTU-AUTOINSTALL" \
-    -o "$OUTPUT_ISO" \
-    --grub2-mbr "$WORK_DIR/mbr.bin" \
-    -partition_offset 16 \
-    --mbr-force-bootable \
-    -append_partition 2 28732ac11ff8d211ba4b00a0c93ec93b "$WORK_DIR/iso/boot.catalog" \
-    -appended_part_as_gpt \
-    -iso_mbr_part_type a2a0d0ebe5b9334487c068b6b72699c7 \
-    -c '/boot.catalog' \
-    -b '/boot/grub/i386-pc/eltorito.img' \
-    -no-emul-boot -boot-load-size 4 -boot-info-table --grub2-boot-info \
-    -eltorito-alt-boot \
-    -e '--interval:appended_partition_2:::' \
-    -no-emul-boot \
-    "$WORK_DIR/iso" 2>/dev/null || {
-    # Fallback: simpler xorriso command if the above fails
-    echo "==> Trying simplified repack..."
-    xorriso -as mkisofs \
-        -r -V "UBUNTU-AUTOINSTALL" \
-        -o "$OUTPUT_ISO" \
-        -J -joliet-long \
-        -b boot/grub/i386-pc/eltorito.img \
-        -no-emul-boot -boot-load-size 4 -boot-info-table \
-        -eltorito-alt-boot \
-        -e boot/grub/efi.img \
-        -no-emul-boot \
-        -isohybrid-gpt-basdat \
-        "$WORK_DIR/iso" 2>/dev/null || {
-        # Final fallback: basic ISO
-        echo "==> Using basic ISO creation..."
-        xorriso -as mkisofs \
-            -r -V "UBUNTU-AUTOINSTALL" \
-            -o "$OUTPUT_ISO" \
-            "$WORK_DIR/iso"
-    }
-}
+echo "==> Repacking ISO (cloning original + injecting autoinstall)..."
+# Clone the original ISO and inject our files — preserves boot structure perfectly
+xorriso -indev "$SOURCE_ISO" \
+    -outdev "$OUTPUT_ISO" \
+    -map "$WORK_DIR/autoinstall" /autoinstall \
+    -map "$WORK_DIR/grub.cfg" /boot/grub/grub.cfg \
+    -boot_image any replay \
+    -volid "UBUNTU-AUTOINSTALL" \
+    -end
 
 # Clean up working directory
 rm -rf "$WORK_DIR"
