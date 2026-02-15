@@ -49,6 +49,27 @@
         - { rule: allow, port: "22", proto: tcp }
         - { state: enabled }
 
+    # --- Fail2ban ---
+    - name: Configure fail2ban for SSH
+      ansible.builtin.copy:
+        content: |
+          [sshd]
+          enabled = true
+          port = ssh
+          filter = sshd
+          maxretry = {{ fail2ban_maxretry }}
+          bantime = {{ fail2ban_bantime }}
+          findtime = {{ fail2ban_findtime }}
+        dest: /etc/fail2ban/jail.d/sshd.conf
+        mode: "0644"
+      notify: Restart fail2ban
+
+    - name: Enable fail2ban
+      ansible.builtin.systemd:
+        name: fail2ban
+        state: started
+        enabled: true
+
     # --- Auto-updates ---
     - name: Enable unattended security upgrades
       ansible.builtin.copy:
@@ -92,6 +113,77 @@
             groups: docker
             append: true
 
+    # --- Monitoring: Beszel agent (all hosts) ---
+    - name: Create Beszel directory
+      ansible.builtin.file:
+        path: /opt/beszel
+        state: directory
+        mode: "0755"
+
+    - name: Deploy Beszel agent compose file
+      ansible.builtin.copy:
+        content: |
+          services:
+            beszel-agent:
+              image: henrygd/beszel-agent:latest
+              container_name: beszel-agent
+              restart: unless-stopped
+              network_mode: host
+              volumes:
+                - /var/run/docker.sock:/var/run/docker.sock:ro
+              environment:
+                PORT: "{{ beszel_agent_port }}"
+        dest: /opt/beszel/docker-compose.yml
+        mode: "0644"
+      notify: Restart Beszel agent
+
+    - name: Start Beszel agent
+      community.docker.docker_compose_v2:
+        project_src: /opt/beszel
+        state: present
+
+    - name: UFW — allow Beszel agent port from homelab network
+      community.general.ufw:
+        rule: allow
+        port: "{{ beszel_agent_port }}"
+        proto: tcp
+        src: 192.168.1.0/24
+
+    # --- Monitoring: Beszel hub (optiplex only) ---
+    - name: Deploy Beszel hub compose file
+      ansible.builtin.copy:
+        content: |
+          services:
+            beszel-hub:
+              image: henrygd/beszel:latest
+              container_name: beszel-hub
+              restart: unless-stopped
+              ports:
+                - "{{ beszel_hub_port }}:{{ beszel_hub_port }}"
+              volumes:
+                - beszel-data:/beszel_data
+          volumes:
+            beszel-data:
+        dest: /opt/beszel/docker-compose.hub.yml
+        mode: "0644"
+      when: inventory_hostname == beszel_hub_host
+      notify: Restart Beszel hub
+
+    - name: Start Beszel hub
+      community.docker.docker_compose_v2:
+        project_src: /opt/beszel
+        files: [docker-compose.hub.yml]
+        state: present
+      when: inventory_hostname == beszel_hub_host
+
+    - name: UFW — allow Beszel hub web UI
+      community.general.ufw:
+        rule: allow
+        port: "{{ beszel_hub_port }}"
+        proto: tcp
+        src: 192.168.1.0/24
+      when: inventory_hostname == beszel_hub_host
+
     # --- Upgrade (optional, run with: make upgrade) ---
     - name: Upgrade all packages
       ansible.builtin.apt:
@@ -103,4 +195,20 @@
     - name: Restart SSH
       ansible.builtin.systemd:
         name: ssh
+        state: restarted
+
+    - name: Restart fail2ban
+      ansible.builtin.systemd:
+        name: fail2ban
+        state: restarted
+
+    - name: Restart Beszel agent
+      community.docker.docker_compose_v2:
+        project_src: /opt/beszel
+        state: restarted
+
+    - name: Restart Beszel hub
+      community.docker.docker_compose_v2:
+        project_src: /opt/beszel
+        files: [docker-compose.hub.yml]
         state: restarted
