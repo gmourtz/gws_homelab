@@ -30,6 +30,10 @@ packages:
 runcmd:
   - systemctl enable ssh
   - systemctl start ssh
+  # Harden SSH — disable password auth & root login
+  - sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+  - sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+  - systemctl restart ssh
   # Resize root filesystem to fill the SD card
   - growpart /dev/mmcblk0 2 || true
   - resize2fs /dev/mmcblk0p2 || true
