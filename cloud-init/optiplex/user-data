@@ -17,8 +17,8 @@ autoinstall:
   identity:
     hostname: optiplex
     username: gws
-    # Locked password — SSH key only
-    password: "!"
+    # Locked password — SSH key only (password auth is disabled via late-commands)
+    password: "$6$homelablocked$YZIe7O7AGvMm8yZ7ddnWARifGT/koTS3r4r1ylqTxl2oR9e8tvgAmw6s1lu2/LpRSm2.kXNlA5F/kenXKlN/l."
 
   ssh:
     install-server: true
@@ -33,17 +33,10 @@ autoinstall:
   network:
     version: 2
     ethernets:
-      eno1:
-        dhcp4: false
-        addresses:
-          - 192.168.1.150/24
-        routes:
-          - to: default
-            via: 192.168.1.1
-        nameservers:
-          addresses:
-            - 1.1.1.1
-            - 8.8.8.8
+      any-eth:
+        match:
+          name: en*
+        dhcp4: true
 
   packages:
     - python3
@@ -64,7 +57,9 @@ autoinstall:
       network:
         version: 2
         ethernets:
-          eno1:
+          lan:
+            match:
+              name: en*
             dhcp4: false
             addresses:
               - 192.168.1.150/24
