@@ -3,7 +3,7 @@
 
 admin_user: gws
 admin_ssh_pubkey: "{{ lookup('file', '~/.ssh/id_ed25519_gws_homelab.pub') }}"
-timezone: Europe/Athens
+timezone: Europe/London
 
 packages:
   - curl
