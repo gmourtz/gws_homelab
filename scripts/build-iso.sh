@@ -67,6 +67,9 @@ mkdir -p "$WORK_DIR"
 echo "==> Extracting source ISO..."
 xorriso -osirrox on -indev "$SOURCE_ISO" -extract / "$WORK_DIR/iso" 2>/dev/null
 
+# ISO contents are read-only — fix permissions so we can modify them
+chmod -R u+w "$WORK_DIR/iso"
+
 echo "==> Injecting autoinstall config..."
 # Create the autoinstall directory on the ISO
 mkdir -p "$WORK_DIR/iso/autoinstall"
