@@ -6,7 +6,7 @@ hostname: rpi3
 manage_etc_hosts: true
 
 locale: en_US.UTF-8
-timezone: Europe/Athens
+timezone: Europe/London
 
 # Create admin user with SSH key (no password login)
 users:
