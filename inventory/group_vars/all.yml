@@ -21,8 +21,8 @@ fail2ban_maxretry: 5
 fail2ban_bantime: 3600
 fail2ban_findtime: 600
 
-# Monitoring — Beszel (https://github.com/henrygd/beszel)
-# Hub runs on optiplex, agent runs on all hosts
-beszel_hub_host: optiplex
-beszel_hub_port: 8090
-beszel_agent_port: 45876
+# Container registry
+ghcr_registry: ghcr.io
+
+# Stacks deployment
+stacks_dest: /opt/stacks

@@ -1,0 +1,50 @@
+---
+# Deploy Docker Compose stacks to homelab hosts
+#
+# Each host has a single compose file: stacks/<hostname>.yml
+# This playbook copies it to the host and runs docker compose up.
+#
+# Usage:
+#   make stacks
+#   ansible-playbook playbooks/deploy-stacks.yml
+#   ansible-playbook playbooks/deploy-stacks.yml --limit optiplex
+
+- name: Deploy stacks
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    stacks_src: "{{ playbook_dir }}/../stacks"
+    stacks_dest: /opt/stacks
+
+  tasks:
+    - name: Create stacks directory
+      ansible.builtin.file:
+        path: "{{ stacks_dest }}"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: "0755"
+
+    - name: Copy compose file to host
+      ansible.builtin.copy:
+        src: "{{ stacks_src }}/{{ inventory_hostname }}.yml"
+        dest: "{{ stacks_dest }}/docker-compose.yml"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: "0644"
+
+    - name: Log in to GHCR
+      community.docker.docker_login:
+        registry: ghcr.io
+        username: "{{ ghcr_username }}"
+        password: "{{ ghcr_token }}"
+      when: ghcr_username is defined and ghcr_token is defined
+      no_log: true
+
+    - name: Pull and deploy stack
+      community.docker.docker_compose_v2:
+        project_src: "{{ stacks_dest }}"
+        pull: always
+        state: present

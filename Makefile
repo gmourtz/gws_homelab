@@ -1,6 +1,6 @@
 # GWS Homelab
 
-.PHONY: help setup ping bootstrap deploy upgrade check
+.PHONY: help setup ping bootstrap deploy stacks upgrade check
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -18,6 +18,9 @@ bootstrap: ## First-time setup (run once after flash)
 
 deploy: ## Apply full configuration
 	ansible-playbook playbooks/site.yml
+
+stacks: ## Deploy Docker Compose stacks to hosts
+	ansible-playbook playbooks/deploy-stacks.yml
 
 upgrade: ## Upgrade all packages
 	ansible-playbook playbooks/site.yml --tags upgrade
