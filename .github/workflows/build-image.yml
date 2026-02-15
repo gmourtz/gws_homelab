@@ -3,7 +3,7 @@ name: Build & Push Image
 # Triggers when any app's code changes
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'apps/**'
   pull_request:
@@ -78,7 +78,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.app }}
           tags: |
             type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
