@@ -116,6 +116,21 @@
       loop: "{{ data_dirs | default([]) }}"
       when: data_mount is defined
 
+    - name: Deploy YouTube API credentials
+      ansible.builtin.copy:
+        content: "{{ item.content }}"
+        dest: "{{ data_mount.path }}/youtube/{{ item.name }}"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: "0600"
+      loop:
+        - { name: client_secret.json, content: "{{ vault_youtube_client_secret }}" }
+        - { name: token.json, content: "{{ vault_youtube_token }}" }
+      loop_control:
+        label: "{{ item.name }}"
+      no_log: true
+      when: data_mount is defined and vault_youtube_client_secret is defined
+
     # --- Docker ---
     - name: Add Docker GPG key
       ansible.builtin.get_url:
