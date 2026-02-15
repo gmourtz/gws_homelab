@@ -1,4 +1,5 @@
 services:
+  # --- Monitoring ---
   beszel-agent:
     image: henrygd/beszel-agent:latest
     container_name: beszel-agent
@@ -18,5 +19,54 @@ services:
     volumes:
       - beszel-data:/beszel_data
 
+  # --- YouTube Premium ---
+  youtube-video-downloader:
+    image: ghcr.io/gmourtz/youtube_premium:latest
+    container_name: youtube-video-downloader
+    restart: unless-stopped
+    mem_limit: 1g
+    volumes:
+      - /mnt/media/videos:/videos
+      - /mnt/media/youtube/token.json:/app/token.json:ro
+      - /mnt/media/youtube/client_secret.json:/app/client_secret.json:ro
+    environment:
+      PLAYLIST_ID: PLZskJ7oz20HcggNZahqoXceJ5J0T8TuND
+      VIDEOS_DIR: /videos
+      TOKEN_FILE: token.json
+      POLL_INTERVAL: "300"
+      AUDIO_ONLY: "false"
+      STATE_FILE_NAME: .downloaded_videos.log
+
+  youtube-music-downloader:
+    image: ghcr.io/gmourtz/youtube_premium:latest
+    container_name: youtube-music-downloader
+    restart: unless-stopped
+    mem_limit: 1g
+    volumes:
+      - /mnt/media/music:/videos
+      - /mnt/media/youtube/token.json:/app/token.json:ro
+      - /mnt/media/youtube/client_secret.json:/app/client_secret.json:ro
+    environment:
+      PLAYLIST_ID: PLZskJ7oz20HeEDddmsJymvg2TdwnpThug
+      VIDEOS_DIR: /videos
+      TOKEN_FILE: token.json
+      POLL_INTERVAL: "300"
+      AUDIO_ONLY: "true"
+      AUDIO_FORMAT: flac
+      STATE_FILE_NAME: .downloaded_music.log
+
+  # --- Media server ---
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    volumes:
+      - jellyfin-config:/config
+      - /mnt/media/videos:/media/videos:ro
+      - /mnt/media/music:/media/music:ro
+
 volumes:
   beszel-data:
+  jellyfin-config:

@@ -1,9 +1,24 @@
 ---
 # Host vars for optiplex
 
+# External storage — USB stick (230 GB, ext4), will be replaced with SSD later
+data_mount:
+  src: UUID=66508e4d-74f7-45c0-a46f-f316c19b99bf
+  path: /mnt/media
+  fstype: ext4
+  opts: defaults,noatime,nofail
+
+# Directory tree created under the mount point
+data_dirs:
+  - videos
+  - music
+  - youtube                  # token.json + client_secret.json live here
+
 # UFW extra rules — ports needed by stacks on this host
 ufw_extra_rules:
   # Beszel agent
   - { port: "45876", proto: tcp, src: "192.168.1.0/24" }
   # Beszel hub web UI
   - { port: "8090", proto: tcp, src: "192.168.1.0/24" }
+  # Jellyfin web UI
+  - { port: "8096", proto: tcp, src: "192.168.1.0/24" }
