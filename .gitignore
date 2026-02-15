@@ -19,9 +19,8 @@ __pycache__/
 .vscode/
 .idea/
 
-# Secrets (if any vault files leak)
-*.vault
-vault_pass.txt
+# Ansible vault password
+.vault_pass
 
 # Temporary facts
 /tmp/facts/

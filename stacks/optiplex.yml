@@ -27,7 +27,7 @@ services:
     mem_limit: 1g
     volumes:
       - /mnt/media/videos:/videos
-      - /mnt/media/youtube/token.json:/app/token.json:ro
+      - /mnt/media/youtube/token.json:/app/token.json
       - /mnt/media/youtube/client_secret.json:/app/client_secret.json:ro
     environment:
       PLAYLIST_ID: PLZskJ7oz20HcggNZahqoXceJ5J0T8TuND
@@ -44,7 +44,7 @@ services:
     mem_limit: 1g
     volumes:
       - /mnt/media/music:/videos
-      - /mnt/media/youtube/token.json:/app/token.json:ro
+      - /mnt/media/youtube/token.json:/app/token.json
       - /mnt/media/youtube/client_secret.json:/app/client_secret.json:ro
     environment:
       PLAYLIST_ID: PLZskJ7oz20HeEDddmsJymvg2TdwnpThug
