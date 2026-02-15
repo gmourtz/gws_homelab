@@ -17,7 +17,9 @@ COPY src/ ./src/
 RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user and a directory for videos
-RUN useradd --create-home appuser &&     mkdir /videos &&     chown appuser:appuser /videos
+RUN useradd --create-home appuser && \
+    mkdir /videos && \
+    chown appuser:appuser /videos
 
 # Switch to the non-root user
 USER appuser
