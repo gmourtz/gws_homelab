@@ -1,17 +1,106 @@
 ---
-# ------------------------------------------------------------------
-# Site Playbook — Full configuration for all homelab hosts
+# Site playbook — configures all homelab hosts
 #
 # Usage:
-#   ansible-playbook playbooks/site.yml
+#   make deploy
 #   ansible-playbook playbooks/site.yml --limit rpi3
-#   ansible-playbook playbooks/site.yml --tags upgrade
-# ------------------------------------------------------------------
 
-- name: Configure all homelab hosts
+- name: Configure homelab
   hosts: all
   become: true
   gather_facts: true
 
-  roles:
-    - common
+  tasks:
+    # --- Packages ---
+    - name: Update apt & install packages
+      ansible.builtin.apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Set timezone
+      community.general.timezone:
+        name: "{{ timezone }}"
+
+    # --- SSH hardening ---
+    - name: Disable SSH password auth & root login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication no" }
+        - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin no" }
+      notify: Restart SSH
+
+    # --- Firewall ---
+    - name: UFW — deny incoming, allow outgoing, allow SSH
+      community.general.ufw:
+        rule: "{{ item.rule | default(omit) }}"
+        direction: "{{ item.direction | default(omit) }}"
+        default: "{{ item.default | default(omit) }}"
+        port: "{{ item.port | default(omit) }}"
+        proto: "{{ item.proto | default(omit) }}"
+        state: "{{ item.state | default(omit) }}"
+      loop:
+        - { direction: incoming, default: deny }
+        - { direction: outgoing, default: allow }
+        - { rule: allow, port: "22", proto: tcp }
+        - { state: enabled }
+
+    # --- Auto-updates ---
+    - name: Enable unattended security upgrades
+      ansible.builtin.copy:
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+          APT::Periodic::AutocleanInterval "7";
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        mode: "0644"
+
+    # --- Docker ---
+    - name: Add Docker GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Add Docker repo
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [arch={{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}
+          signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/ubuntu
+          {{ ansible_distribution_release }} stable
+        filename: docker
+
+    - name: Install Docker
+      ansible.builtin.apt:
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin]
+        state: present
+        update_cache: true
+
+    - name: Enable Docker & add user to docker group
+      block:
+        - ansible.builtin.systemd:
+            name: docker
+            state: started
+            enabled: true
+        - ansible.builtin.user:
+            name: "{{ admin_user }}"
+            groups: docker
+            append: true
+
+    # --- Upgrade (optional, run with: make upgrade) ---
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: safe
+        autoremove: true
+      tags: [upgrade, never]
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted

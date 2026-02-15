@@ -1,17 +1,9 @@
 ---
-# ------------------------------------------------------------------
-# Bootstrap Playbook — First-time setup for new hosts
-#
-# This playbook handles the initial connection (possibly as ubuntu
-# default user) and sets up the admin user, SSH key, and sudo access.
+# First-time setup — run once after flashing
 #
 # Usage:
-#   # If cloud-init already created the 'gws' user:
-#   ansible-playbook playbooks/bootstrap.yml
-#
-#   # If first login is with default 'ubuntu' user:
+#   make bootstrap
 #   ansible-playbook playbooks/bootstrap.yml -e "ansible_user=ubuntu"
-# ------------------------------------------------------------------
 
 - name: Bootstrap homelab nodes
   hosts: all
@@ -19,61 +11,34 @@
   gather_facts: true
 
   tasks:
-    - name: Ensure admin user exists
+    - name: Create admin user with sudo
       ansible.builtin.user:
         name: "{{ admin_user }}"
-        groups: sudo,adm
+        groups: sudo
         append: true
         shell: /bin/bash
-        state: present
 
-    - name: Set authorized SSH key for admin user
+    - name: Add SSH key
       ansible.posix.authorized_key:
         user: "{{ admin_user }}"
         key: "{{ admin_ssh_pubkey }}"
-        state: present
-        exclusive: false
 
-    - name: Grant passwordless sudo
+    - name: Passwordless sudo
       ansible.builtin.copy:
         content: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
         dest: "/etc/sudoers.d/{{ admin_user }}"
-        owner: root
-        group: root
         mode: "0440"
         validate: "visudo -cf %s"
 
-    - name: Harden SSH — disable password auth
+    - name: Disable SSH password auth & root login
       ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
-        regexp: "^#?PasswordAuthentication"
-        line: "PasswordAuthentication no"
-        state: present
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication no" }
+        - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin no" }
       notify: Restart SSH
-
-    - name: Harden SSH — disable root login
-      ansible.builtin.lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: "^#?PermitRootLogin"
-        line: "PermitRootLogin no"
-        state: present
-      notify: Restart SSH
-
-    - name: Ensure SSH is enabled and running
-      ansible.builtin.systemd:
-        name: ssh
-        enabled: true
-        state: started
-
-    - name: Update apt cache
-      ansible.builtin.apt:
-        update_cache: true
-        cache_valid_time: 3600
-
-    - name: Install Python 3 (Ansible dependency)
-      ansible.builtin.apt:
-        name: python3
-        state: present
 
   handlers:
     - name: Restart SSH

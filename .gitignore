@@ -25,3 +25,5 @@ vault_pass.txt
 
 # Temporary facts
 /tmp/facts/
+
+claude.md
