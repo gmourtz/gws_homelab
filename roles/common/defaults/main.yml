@@ -1,0 +1,22 @@
+---
+# Default variables for the common role
+# These can be overridden in inventory/group_vars/ or host_vars/
+
+common_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - tmux
+  - unattended-upgrades
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - ufw
+
+timezone: Europe/Athens
+ssh_port: 22
+ssh_password_auth: false
+ssh_permit_root_login: false

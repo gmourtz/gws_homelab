@@ -1,0 +1,41 @@
+---
+# -------------------------------------------------------
+# Shared variables for all homelab hosts
+# -------------------------------------------------------
+
+# Admin user created by cloud-init / bootstrap
+admin_user: gws
+admin_ssh_pubkey: "{{ lookup('file', '~/.ssh/id_ed25519_gws_homelab.pub') }}"
+
+# Timezone & locale
+timezone: Europe/Athens
+locale: en_US.UTF-8
+
+# DNS (Cloudflare + Google fallback)
+dns_servers:
+  - 1.1.1.1
+  - 8.8.8.8
+
+# NTP
+ntp_servers:
+  - ntp.ubuntu.com
+
+# Common packages to install on every host
+common_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - tmux
+  - unattended-upgrades
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - ufw
+
+# SSH hardening
+ssh_port: 22
+ssh_password_auth: false
+ssh_permit_root_login: false
