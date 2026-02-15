@@ -71,3 +71,4 @@ autoinstall:
                 - 1.1.1.1
                 - 8.8.8.8
       EOF
+      chmod 600 /target/etc/netplan/99-static.yaml
