@@ -1,0 +1,7 @@
+---
+# Host vars for rpi3
+
+# UFW extra rules — ports needed by stacks on this host
+ufw_extra_rules:
+  # Beszel agent
+  - { port: "45876", proto: tcp, src: "192.168.1.0/24" }

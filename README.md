@@ -1,6 +1,6 @@
 # GWS Homelab
 
-Ansible-managed homelab. Ubuntu Server + Docker on all hosts.
+Monorepo for a two-node homelab. Ubuntu Server + Docker, managed by Ansible.
 
 ## Hosts
 
@@ -23,17 +23,40 @@ make setup
 ./scripts/flash.sh optiplex /dev/diskN   # flash OptiPlex USB
 
 # 3. Boot devices, then:
-make bootstrap    # first-time setup (once)
-make deploy       # apply full config (repeat anytime)
+make deploy       # configure hosts (packages, SSH, firewall, Docker)
+make stacks       # deploy Docker Compose stacks
 ```
 
 ## Commands
 
 ```
+make help       — show all commands
 make ping       — test SSH connectivity
-make deploy     — apply configuration
+make deploy     — apply host configuration
+make stacks     — deploy container stacks
 make upgrade    — upgrade all packages
 make check      — dry-run, no changes
+```
+
+## Repo Structure
+
+```
+.
+├── apps/                        # App source code + Dockerfiles (built by CI)
+├── stacks/                      # Docker Compose files (deployed by Ansible)
+│   ├── optiplex/                #   stacks for the optiplex host
+│   └── rpi3/                    #   stacks for the rpi3 host
+├── playbooks/
+│   ├── site.yml                 #   host config (packages, SSH, UFW, Docker)
+│   └── deploy-stacks.yml        #   deploy stacks/ to hosts
+├── inventory/
+│   ├── hosts.yml                #   device inventory
+│   ├── group_vars/all.yml       #   shared variables
+│   └── host_vars/               #   per-host variables (UFW rules, etc.)
+├── cloud-init/                  # First-boot config (RPi + OptiPlex)
+├── scripts/                     # flash.sh, build-iso.sh
+├── .github/workflows/           # CI: build + push images to GHCR
+└── Makefile                     # make setup/deploy/stacks/upgrade
 ```
 
 ## SSH
