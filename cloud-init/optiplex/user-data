@@ -1,0 +1,78 @@
+#cloud-config
+# ------------------------------------------------------------------
+# Autoinstall config for Dell OptiPlex 3040 Micro
+# Ubuntu 24.04 LTS — fully unattended install
+#
+# This file is embedded into the custom ISO by scripts/build-iso.sh.
+# On boot, the installer reads this and completes without interaction.
+# ------------------------------------------------------------------
+
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  timezone: Europe/Athens
+  keyboard:
+    layout: us
+
+  identity:
+    hostname: optiplex
+    username: gws
+    # Locked password — SSH key only
+    password: "!"
+
+  ssh:
+    install-server: true
+    authorized-keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjZb5ELR3VYw8eSNGTf9eAY8kqeA/LuRIhD8X/fzpup gws_homelab
+    allow-pw: false
+
+  storage:
+    layout:
+      name: direct  # Use entire 240GB SSD
+
+  network:
+    version: 2
+    ethernets:
+      eno1:
+        dhcp4: false
+        addresses:
+          - 192.168.1.150/24
+        routes:
+          - to: default
+            via: 192.168.1.1
+        nameservers:
+          addresses:
+            - 1.1.1.1
+            - 8.8.8.8
+
+  packages:
+    - python3
+    - openssh-server
+    - curl
+    - wget
+
+  late-commands:
+    # Passwordless sudo for gws
+    - echo 'gws ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/gws
+    - chmod 440 /target/etc/sudoers.d/gws
+    # Disable password auth in SSH
+    - sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /target/etc/ssh/sshd_config
+    - sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /target/etc/ssh/sshd_config
+    # Apply static network config to installed system
+    - |
+      cat > /target/etc/netplan/99-static.yaml << 'EOF'
+      network:
+        version: 2
+        ethernets:
+          eno1:
+            dhcp4: false
+            addresses:
+              - 192.168.1.150/24
+            routes:
+              - to: default
+                via: 192.168.1.1
+            nameservers:
+              addresses:
+                - 1.1.1.1
+                - 8.8.8.8
+      EOF

@@ -1,0 +1,17 @@
+---
+# ------------------------------------------------------------------
+# Site Playbook — Full configuration for all homelab hosts
+#
+# Usage:
+#   ansible-playbook playbooks/site.yml
+#   ansible-playbook playbooks/site.yml --limit rpi3
+#   ansible-playbook playbooks/site.yml --tags upgrade
+# ------------------------------------------------------------------
+
+- name: Configure all homelab hosts
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - common

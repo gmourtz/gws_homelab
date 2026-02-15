@@ -1,0 +1,41 @@
+#cloud-config
+# Cloud-init user-data for Raspberry Pi 3 B+ (Ubuntu 24.04)
+# This file is placed on the system-boot partition of the SD card.
+
+hostname: rpi3
+manage_etc_hosts: true
+
+locale: en_US.UTF-8
+timezone: Europe/Athens
+
+# Create admin user with SSH key (no password login)
+users:
+  - name: gws
+    groups: [sudo, adm]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjZb5ELR3VYw8eSNGTf9eAY8kqeA/LuRIhD8X/fzpup gws_homelab
+
+# Disable password SSH auth
+ssh_pwauth: false
+
+# Install minimal packages on first boot
+packages:
+  - python3
+  - openssh-server
+
+# Enable and start SSH
+runcmd:
+  - systemctl enable ssh
+  - systemctl start ssh
+  # Resize root filesystem to fill the SD card
+  - growpart /dev/mmcblk0 2 || true
+  - resize2fs /dev/mmcblk0p2 || true
+
+# Reboot after cloud-init completes
+power_state:
+  mode: reboot
+  message: "Cloud-init complete — rebooting"
+  timeout: 30

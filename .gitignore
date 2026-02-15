@@ -1,0 +1,27 @@
+# OS images (large files — never commit)
+images/
+
+# Ansible retry files
+*.retry
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# macOS
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Secrets (if any vault files leak)
+*.vault
+vault_pass.txt
+
+# Temporary facts
+/tmp/facts/
