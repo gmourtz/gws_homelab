@@ -59,6 +59,7 @@
         - { direction: incoming, default: deny }
         - { direction: outgoing, default: allow }
         - { rule: allow, port: "22", proto: tcp }
+        - { rule: allow, port: "41641", proto: udp }
         - { state: enabled }
 
     - name: UFW — allow additional ports
@@ -171,6 +172,47 @@
             name: "{{ admin_user }}"
             groups: docker
             append: true
+
+    # --- Tailscale ---
+    - name: Add Tailscale GPG key
+      ansible.builtin.get_url:
+        url: https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg
+        dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+        mode: "0644"
+
+    - name: Add Tailscale repo
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg]
+          https://pkgs.tailscale.com/stable/ubuntu
+          {{ ansible_facts['distribution_release'] }} main
+        filename: tailscale
+
+    - name: Install Tailscale
+      ansible.builtin.apt:
+        name: tailscale
+        state: present
+        update_cache: true
+
+    - name: Enable tailscaled
+      ansible.builtin.systemd:
+        name: tailscaled
+        state: started
+        enabled: true
+
+    - name: Check Tailscale status
+      ansible.builtin.command: tailscale status --json
+      register: ts_status
+      changed_when: false
+      failed_when: false
+
+    - name: Connect Tailscale
+      ansible.builtin.command: >-
+        tailscale up --authkey={{ vault_tailscale_authkey }} --accept-routes
+      when:
+        - vault_tailscale_authkey is defined
+        - (ts_status.stdout | from_json).BackendState | default('') != 'Running'
+      no_log: true
 
   handlers:
     - name: Restart SSH
