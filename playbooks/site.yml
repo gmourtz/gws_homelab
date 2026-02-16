@@ -129,7 +129,9 @@
       loop_control:
         label: "{{ item.name }}"
       no_log: true
-      when: data_mount is defined and vault_youtube_client_secret is defined
+      when:
+        - data_mount is defined
+        - vault_youtube_client_secret is defined
 
     # --- Docker ---
     - name: Add Docker GPG key
