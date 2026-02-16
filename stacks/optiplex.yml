@@ -9,6 +9,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       PORT: "45876"
+      KEY: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE4wKKsidPkwxLodNHyivIN+9v+zfdT0DFZXrkDCUWJr"
 
   beszel-hub:
     image: henrygd/beszel:latest
