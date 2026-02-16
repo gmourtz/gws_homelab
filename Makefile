@@ -1,6 +1,6 @@
 # GWS Homelab
 
-.PHONY: help setup ping deploy stacks
+.PHONY: help setup ping deploy stacks vault
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -18,3 +18,6 @@ deploy: ## Apply full configuration
 
 stacks: ## Deploy Docker Compose stacks to hosts
 	ansible-playbook playbooks/deploy-stacks.yml
+
+vault: ## Edit encrypted vault secrets
+	ansible-vault edit inventory/group_vars/all/vault.yml
