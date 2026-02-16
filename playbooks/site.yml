@@ -25,6 +25,12 @@
         update_cache: true
         cache_valid_time: 3600
 
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: dist
+        update_cache: true
+        cache_valid_time: 3600
+
     - name: Set timezone
       community.general.timezone:
         name: "{{ timezone }}"
@@ -165,13 +171,6 @@
             name: "{{ admin_user }}"
             groups: docker
             append: true
-
-    # --- Upgrade (optional, run with: make upgrade) ---
-    - name: Upgrade all packages
-      ansible.builtin.apt:
-        upgrade: safe
-        autoremove: true
-      tags: [upgrade, never]
 
   handlers:
     - name: Restart SSH
