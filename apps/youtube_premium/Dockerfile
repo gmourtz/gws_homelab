@@ -13,8 +13,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy the application source code
 COPY src/ ./src/
 
-# Install ffmpeg
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+# Install ffmpeg and deno (JS runtime required by yt-dlp)
+RUN apt-get update && apt-get install -y ffmpeg curl unzip && \
+    curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh && \
+    apt-get purge -y curl unzip && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user and a directory for videos
 RUN useradd --create-home appuser && \
