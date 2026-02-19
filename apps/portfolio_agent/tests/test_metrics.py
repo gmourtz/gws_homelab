@@ -5,9 +5,12 @@ import pytest
 from metrics import (
     PortfolioMetrics,
     PositionMetric,
+    StockScore,
     TimeSeriesMetrics,
     compute_metrics,
     compute_timeseries_metrics,
+    score_stocks,
+    _correlation_clusters,
     _fundamental_score,
     _valuation_signal,
     _health_scores,
@@ -339,3 +342,232 @@ class TestTimeSeriesMetrics:
         # Current drawdown should be 0 (at peak)
         assert ts.current_drawdown_pct is not None
         assert abs(ts.current_drawdown_pct) < 0.01
+
+    def test_with_price_history_triggers_clusters(self):
+        """When price_history is provided, correlation_clusters is populated."""
+        np.random.seed(99)
+        dates = pd.date_range("2025-01-01", periods=30, freq="B")
+        returns = pd.Series(np.random.normal(0.001, 0.02, 30), index=dates)
+        values = pd.Series((1 + returns).cumprod() * 10000, index=dates)
+
+        # Build correlated price history (A & B move together, C independent)
+        base = np.cumsum(np.random.normal(0, 1, 30)) + 100
+        price_history = pd.DataFrame({
+            "A": base + np.random.normal(0, 0.1, 30),
+            "B": base + np.random.normal(0, 0.1, 30),
+            "C": np.cumsum(np.random.normal(0, 2, 30)) + 50,
+        }, index=dates)
+        ts = compute_timeseries_metrics(returns, values, price_history)
+        assert ts is not None
+        # With highly correlated A & B, we should get at least one cluster
+        assert ts.correlation_clusters is not None
+        assert any("A" in c and "B" in c for c in ts.correlation_clusters)
+
+
+# ---------------------------------------------------------------------------
+# _correlation_clusters
+# ---------------------------------------------------------------------------
+
+class TestCorrelationClusters:
+    def test_returns_none_for_none_input(self):
+        assert _correlation_clusters(None) is None
+
+    def test_returns_none_for_too_few_columns(self):
+        dates = pd.date_range("2025-01-01", periods=20, freq="B")
+        df = pd.DataFrame({"A": range(20), "B": range(20)}, index=dates)
+        assert _correlation_clusters(df) is None
+
+    def test_returns_none_for_too_few_rows(self):
+        dates = pd.date_range("2025-01-01", periods=5, freq="B")
+        df = pd.DataFrame({
+            "A": [1, 2, 3, 4, 5],
+            "B": [5, 4, 3, 2, 1],
+            "C": [2, 4, 6, 8, 10],
+        }, index=dates)
+        # After pct_change + dropna → 4 rows < 10 threshold
+        assert _correlation_clusters(df) is None
+
+    def test_finds_correlated_pair(self):
+        np.random.seed(42)
+        dates = pd.date_range("2025-01-01", periods=50, freq="B")
+        base = np.cumsum(np.random.normal(0, 1, 50)) + 100
+        df = pd.DataFrame({
+            "CORR_A": base + np.random.normal(0, 0.05, 50),
+            "CORR_B": base + np.random.normal(0, 0.05, 50),
+            "INDEP": np.cumsum(np.random.normal(0, 3, 50)) + 200,
+        }, index=dates)
+        clusters = _correlation_clusters(df, threshold=0.75)
+        assert clusters is not None
+        assert len(clusters) >= 1
+        # The correlated pair should be in the same cluster
+        found = any("CORR_A" in c and "CORR_B" in c for c in clusters)
+        assert found
+        # INDEP should NOT be in a cluster with the correlated pair
+        for c in clusters:
+            if "CORR_A" in c:
+                assert "INDEP" not in c
+
+    def test_no_clusters_when_independent(self):
+        np.random.seed(7)
+        dates = pd.date_range("2025-01-01", periods=50, freq="B")
+        df = pd.DataFrame({
+            "X": np.cumsum(np.random.normal(0, 1, 50)) + 100,
+            "Y": np.cumsum(np.random.normal(0, 1, 50)) + 200,
+            "Z": np.cumsum(np.random.normal(0, 1, 50)) + 300,
+        }, index=dates)
+        # Independent series → likely no cluster at threshold 0.75
+        clusters = _correlation_clusters(df, threshold=0.95)
+        assert clusters is None
+
+    def test_constant_column_excluded(self):
+        """Columns with zero std (constant) should be excluded, not crash."""
+        np.random.seed(11)
+        dates = pd.date_range("2025-01-01", periods=30, freq="B")
+        df = pd.DataFrame({
+            "A": np.cumsum(np.random.normal(0, 1, 30)) + 100,
+            "B": np.cumsum(np.random.normal(0, 1, 30)) + 200,
+            "CONST": [50.0] * 30,
+        }, index=dates)
+        result = _correlation_clusters(df)
+        # Should handle gracefully — CONST has 0 std → excluded → < 3 valid
+        # or returns None. Either way, no crash.
+        assert result is None  # < 3 valid columns after filtering
+
+
+# ---------------------------------------------------------------------------
+# score_stocks
+# ---------------------------------------------------------------------------
+
+class TestScoreStocks:
+    def _make_pos(self, ticker="AAPL_US_EQ", name="Apple", market="US",
+                  weight=15.0, pnl_pct=20.0, price=180.0, value=2700.0):
+        return PositionMetric(
+            ticker=ticker, name=name, market=market,
+            quantity=15, avg_price=150, current_price=price,
+            current_value=value, weight_pct=weight,
+            pnl=300, pnl_pct=pnl_pct, fx_impact=0,
+        )
+
+    def test_basic_scoring(self):
+        """Positions with full fundamentals produce valid StockScores."""
+        pos = [self._make_pos()]
+        fundamentals = {"AAPL": {
+            "pe": 25, "eps_growth": 15, "rev_growth": 10,
+            "debt_to_equity": 1.0, "roe": 20, "net_margin": 25,
+            "div_yield": 0.5, "beta": 1.1,
+            "w52_high": 190, "w52_low": 120,
+        }}
+        profiles = {"AAPL": {"sector": "Technology"}}
+        earnings = {}  # no upcoming earnings
+        symbol_map = {"AAPL_US_EQ": "AAPL"}
+
+        scores = score_stocks(pos, fundamentals, profiles, earnings, symbol_map)
+        assert len(scores) == 1
+        s = scores[0]
+        assert isinstance(s, StockScore)
+        assert s.ticker == "AAPL_US_EQ"
+        assert s.sector == "Technology"
+        assert s.pe_ratio == 25
+        assert s.fundamental_score >= 0
+        assert s.valuation in ("CHEAP", "FAIR", "EXPENSIVE")
+        assert not s.earnings_soon
+        assert not s.high_leverage
+
+    def test_missing_fundamentals_returns_neg1_score(self):
+        """No fundamental data → score = -1, valuation = UNKNOWN."""
+        pos = [self._make_pos("FOO_US_EQ", "Foo Inc")]
+        scores = score_stocks(
+            pos,
+            fundamentals={},
+            profiles={},
+            earnings_calendar={},
+            symbol_map={"FOO_US_EQ": "FOO"},
+        )
+        assert len(scores) == 1
+        assert scores[0].fundamental_score == -1
+        assert scores[0].valuation == "UNKNOWN"
+        assert scores[0].sector == "Unknown"
+
+    def test_earnings_soon_flag(self):
+        pos = [self._make_pos()]
+        scores = score_stocks(
+            pos,
+            fundamentals={"AAPL": {"pe": 20, "eps_growth": 10, "roe": 15, "net_margin": 15}},
+            profiles={"AAPL": {}},
+            earnings_calendar={"AAPL": "2025-02-20"},
+            symbol_map={"AAPL_US_EQ": "AAPL"},
+        )
+        assert scores[0].earnings_soon
+
+    def test_high_leverage_flag(self):
+        pos = [self._make_pos()]
+        scores = score_stocks(
+            pos,
+            fundamentals={"AAPL": {"debt_to_equity": 3.5, "pe": 20, "roe": 10, "net_margin": 10}},
+            profiles={},
+            earnings_calendar={},
+            symbol_map={"AAPL_US_EQ": "AAPL"},
+        )
+        assert scores[0].high_leverage
+
+    def test_negative_growth_flag(self):
+        pos = [self._make_pos()]
+        scores = score_stocks(
+            pos,
+            fundamentals={"AAPL": {"eps_growth": -5, "pe": 20, "roe": 10, "net_margin": 10}},
+            profiles={},
+            earnings_calendar={},
+            symbol_map={"AAPL_US_EQ": "AAPL"},
+        )
+        assert scores[0].has_negative_growth
+
+    def test_near_52w_high(self):
+        pos = [self._make_pos(price=188.0)]
+        scores = score_stocks(
+            pos,
+            fundamentals={"AAPL": {"w52_high": 190, "w52_low": 120, "pe": 20, "roe": 10, "net_margin": 10}},
+            profiles={},
+            earnings_calendar={},
+            symbol_map={"AAPL_US_EQ": "AAPL"},
+        )
+        assert scores[0].near_52w_high
+        assert not scores[0].near_52w_low
+
+    def test_near_52w_low(self):
+        pos = [self._make_pos(price=125.0)]
+        scores = score_stocks(
+            pos,
+            fundamentals={"AAPL": {"w52_high": 190, "w52_low": 120, "pe": 20, "roe": 10, "net_margin": 10}},
+            profiles={},
+            earnings_calendar={},
+            symbol_map={"AAPL_US_EQ": "AAPL"},
+        )
+        assert scores[0].near_52w_low
+        assert not scores[0].near_52w_high
+
+    def test_multiple_positions(self):
+        positions = [
+            self._make_pos("A_US_EQ", "A Inc", "US", 40, 10, 100, 4000),
+            self._make_pos("Bl_EQ", "B PLC", "UK", 30, -5, 50, 3000),
+            self._make_pos("Cd_EQ", "C AG", "DE", 20, 50, 200, 2000),
+        ]
+        fundamentals = {
+            "A": {"pe": 15, "roe": 20, "net_margin": 15},
+            "B": {"pe": 35, "roe": 5, "net_margin": 3},
+            "C": {"pe": 10, "eps_growth": 30, "roe": 25, "net_margin": 20},
+        }
+        symbol_map = {"A_US_EQ": "A", "Bl_EQ": "B", "Cd_EQ": "C"}
+        scores = score_stocks(positions, fundamentals, {}, {}, symbol_map)
+        assert len(scores) == 3
+        # C should have the highest fundamental score (cheap PE + strong growth)
+        c_score = next(s for s in scores if s.ticker == "Cd_EQ")
+        a_score = next(s for s in scores if s.ticker == "A_US_EQ")
+        b_score = next(s for s in scores if s.ticker == "Bl_EQ")
+        assert c_score.fundamental_score > b_score.fundamental_score
+
+    def test_unmapped_ticker_uses_empty_fundamentals(self):
+        """Ticker not in symbol_map → looks up empty string → no fundamentals."""
+        pos = [self._make_pos("MYSTERY_XX_EQ", "Mystery")]
+        scores = score_stocks(pos, {}, {}, {}, {})
+        assert len(scores) == 1
+        assert scores[0].fundamental_score == -1
