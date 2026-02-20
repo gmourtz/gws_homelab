@@ -47,6 +47,7 @@ class PersistentState:
     last_rebalance_date: str | None = None
     last_review_date: str | None = None
     run_count: int = 0
+    previous_alerts: list[dict] | None = None  # alerts from last run
 
 
 # ---------------------------------------------------------------------------
@@ -170,13 +171,14 @@ class SnapshotStore:
     def save_state(self, state: PersistentState) -> None:
         self._state_file.write_text(json.dumps(asdict(state), indent=2) + "\n")
 
-    def mark_run(self, state: PersistentState) -> PersistentState:
+    def mark_run(self, state: PersistentState, alerts: list[dict] | None = None) -> PersistentState:
         """Return updated state after a successful run."""
         return PersistentState(
             last_run=date.today().isoformat(),
             last_rebalance_date=state.last_rebalance_date,
             last_review_date=state.last_review_date,
             run_count=state.run_count + 1,
+            previous_alerts=alerts,
         )
 
     # ── Internal ───────────────────────────────────────────────────

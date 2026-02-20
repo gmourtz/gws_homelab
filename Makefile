@@ -21,3 +21,11 @@ stacks: ## Deploy Docker Compose stacks to hosts
 
 vault: ## Edit encrypted vault secrets
 	ansible-vault edit inventory/group_vars/all/vault.yml
+
+test: ## Run unit tests for all apps
+	@for dir in apps/*/; do \
+		if [ -f "$$dir/pytest.ini" ]; then \
+			echo "Running tests in $$dir..."; \
+			(cd "$$dir" && python -m pytest) || exit 1; \
+		fi; \
+	done

@@ -16,11 +16,17 @@ from typing import Any
 from analyzer import PortfolioAnalyzer
 from ips import IPSConfig
 from metrics import (
+    DCASignal,
+    Opportunity,
     PortfolioMetrics,
     PositionMetric,
+    StockScore,
     TimeSeriesMetrics,
+    compute_dca_signals,
     compute_metrics,
     compute_timeseries_metrics,
+    scan_opportunities,
+    score_stocks,
 )
 from news import FinnhubClient, extract_symbol
 from notifier import TelegramNotifier
@@ -98,6 +104,148 @@ def dict_to_metrics(d: dict) -> PortfolioMetrics:
 
 
 # ---------------------------------------------------------------------------
+# DCA signals helper
+# ---------------------------------------------------------------------------
+
+def _append_dca_signals(parts: list[str], signals: list[dict]) -> None:
+    """Append DCA buy-zone / extended signals to message parts."""
+    buy_zone = [s for s in signals if s.get("signal") == "BUY_ZONE"]
+    extended = [s for s in signals if s.get("signal") == "EXTENDED"]
+
+    if not buy_zone and not extended:
+        return
+
+    parts.append("\n📉 DCA signals:")
+
+    if buy_zone:
+        # Sort by most underweight (biggest discount to SMA)
+        for s in sorted(buy_zone, key=lambda x: x.get("weight_pct", 0), reverse=True)[:5]:
+            sma = s.get("sma_30")
+            price = s.get("current_price", 0)
+            discount = ((price - sma) / sma * 100) if sma else 0
+            parts.append(
+                f"  🟢 {s['name']}: {discount:+.1f}% vs SMA-30 "
+                f"(wt {s.get('weight_pct', 0):.1f}%)"
+            )
+
+    if extended:
+        for s in sorted(extended, key=lambda x: x.get("weight_pct", 0), reverse=True)[:3]:
+            sma = s.get("sma_50")
+            price = s.get("current_price", 0)
+            premium = ((price - sma) / sma * 100) if sma else 0
+            parts.append(
+                f"  🔴 {s['name']}: +{premium:.0f}% above SMA-50 — consider pausing DCA"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Stale alert helper
+# ---------------------------------------------------------------------------
+
+def _append_stale_alerts(
+    parts: list[str],
+    current_alerts: list[dict],
+    previous_alerts: list[dict],
+) -> None:
+    """Flag alerts that persisted since the previous run (unacted)."""
+    prev_keys = {
+        (a.get("category", ""), a.get("title", ""))
+        for a in previous_alerts
+        if "ACTION" in a.get("severity", "") or "WARNING" in a.get("severity", "")
+    }
+    if not prev_keys:
+        return
+
+    stale = [
+        a for a in current_alerts
+        if (a.get("category", ""), a.get("title", "")) in prev_keys
+        and ("ACTION" in a.get("severity", "") or "WARNING" in a.get("severity", ""))
+    ]
+    if stale:
+        parts.append(f"\n🔁 {len(stale)} recurring alert(s) from last run:")
+        for a in stale:
+            parts.append(f"  • {a.get('title', '')} — still unresolved")
+
+
+# ---------------------------------------------------------------------------
+# Stock insights helper
+# ---------------------------------------------------------------------------
+
+def _append_stock_insights(parts: list[str], scores: list[dict]) -> None:
+    """Append stock-scoring insights to the message parts list."""
+    earnings = [s for s in scores if s.get("earnings_soon")]
+    cheap = [s for s in scores if s.get("valuation") == "CHEAP" and s.get("fundamental_score", -1) >= 0]
+    risky = [
+        s for s in scores
+        if s.get("high_leverage") or (
+            s.get("has_negative_growth") and s.get("weight_pct", 0) >= 1.0
+        )
+    ]
+
+    if not earnings and not cheap and not risky:
+        return
+
+    parts.append("\n🔬 Stock insights:")
+
+    if earnings:
+        items = ", ".join(f"{s['name']}" for s in earnings[:5])
+        parts.append(f"  📅 Earnings soon: {items}")
+
+    if cheap:
+        cheap_sorted = sorted(cheap, key=lambda s: -s.get("fundamental_score", 0))
+        items = ", ".join(
+            f"{s['name']} (score {s['fundamental_score']})"
+            for s in cheap_sorted[:5]
+        )
+        parts.append(f"  💎 Cheap valuations: {items}")
+
+    if risky:
+        risky_sorted = sorted(risky, key=lambda s: s.get("pnl_pct", 0))
+        items = []
+        for s in risky_sorted[:5]:
+            flags = []
+            if s.get("high_leverage"):
+                flags.append("high debt")
+            if s.get("has_negative_growth"):
+                flags.append("neg growth")
+            if s.get("near_52w_low"):
+                flags.append("near 52w low")
+            items.append(f"{s['name']} ({', '.join(flags)})")
+        parts.append(f"  ⚠️ Risk flags: {'; '.join(items)}")
+
+
+# ---------------------------------------------------------------------------
+# Opportunities helper
+# ---------------------------------------------------------------------------
+
+def _append_opportunities(parts: list[str], opportunities: list[dict]) -> None:
+    """Append deployment opportunities to the message parts list."""
+    if not opportunities:
+        return
+
+    signal_emoji = {
+        "ACCUMULATE": "🟢",
+        "DEPLOY_CASH": "💰",
+        "TOP_UP": "🔵",
+    }
+
+    parts.append("\n🎯 Opportunities:")
+    for opp in opportunities:
+        emoji = signal_emoji.get(opp.get("signal", ""), "📌")
+        ticker = opp.get("ticker", "?")
+        name = opp.get("name", ticker)
+        signal = opp.get("signal", "?")
+        bucket = opp.get("bucket_name", "?")
+        drift = opp.get("bucket_drift_pct", 0)
+        val = opp.get("valuation", "?")
+        dca = opp.get("dca_signal", "?")
+        parts.append(
+            f"  {emoji} {signal} {name} ({ticker})\n"
+            f"     {bucket} {drift:+.1f}pp | {val} | DCA: {dca}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Message builder
 # ---------------------------------------------------------------------------
 
@@ -142,6 +290,11 @@ def build_message(
     else:
         parts.append("\n✅ All clear — IPS fully compliant")
 
+    # ── Stale alert tracking ──
+    prev_alerts = state.get("persistent_state", {}).get("previous_alerts")
+    if prev_alerts and alerts:
+        _append_stale_alerts(parts, alerts, prev_alerts)
+
     # ── Quick stats ──
     parts.append(
         f"\n📊 P/L: {pm_dict.get('overall_pnl_pct', 0):+.1f}% | "
@@ -172,6 +325,21 @@ def build_message(
                 f"  {d['bucket_name']}: {d['actual_pct']:.1f}% "
                 f"(target {d['target_pct']:.0f}%, {d['drift_pct']:+.1f}pp)"
             )
+
+    # ── DCA signals ──
+    dca_signals = state.get("dca_signals", [])
+    if dca_signals:
+        _append_dca_signals(parts, dca_signals)
+
+    # ── Stock insights ──
+    scores = state.get("stock_scores", [])
+    if scores:
+        _append_stock_insights(parts, scores)
+
+    # ── Deployment opportunities ──
+    opportunities = state.get("opportunities", [])
+    if opportunities:
+        _append_opportunities(parts, opportunities)
 
     # ── AI report (structured) ──
     if report_dict:
@@ -364,9 +532,19 @@ class PipelineNodes:
                 ts.sharpe_ratio,
             )
 
+        # DCA / accumulation signals
+        dca = compute_dca_signals(pm.positions, price_hist)
+        buy_zone = [s for s in dca if s.signal == "BUY_ZONE"]
+        extended = [s for s in dca if s.signal == "EXTENDED"]
+        if buy_zone or extended:
+            log.info(
+                "DCA signals: %d buy-zone, %d extended", len(buy_zone), len(extended)
+            )
+
         return {
             "portfolio_metrics": metrics_to_dict(pm),
             "timeseries_metrics": asdict(ts) if ts else None,
+            "dca_signals": [asdict(s) for s in dca],
         }
 
     # ── Node 5: Optimise ───────────────────────────────────────────
@@ -376,7 +554,7 @@ class PipelineNodes:
         log.info("=== [5/9] Generating rebalance options ===")
         pm_dict = state.get("portfolio_metrics")
         if not pm_dict:
-            return {"rebalance_options": []}
+            return {"rebalance_options": [], "bucket_assignments": {}}
 
         pm = dict_to_metrics(pm_dict)
 
@@ -417,7 +595,10 @@ class PipelineNodes:
         )
 
         log.info("Generated %d rebalance options", len(options))
-        return {"rebalance_options": [asdict(o) for o in options]}
+        return {
+            "rebalance_options": [asdict(o) for o in options],
+            "bucket_assignments": bucket_assignments,
+        }
 
     # ── Node 6: Evaluate policy ────────────────────────────────────
 
@@ -460,14 +641,14 @@ class PipelineNodes:
     # ── Node 7: Research ───────────────────────────────────────────
 
     def research(self, state: dict) -> dict:
-        """Fetch news + fundamentals for flagged and top-weight tickers."""
+        """Fetch news + fundamentals + profiles + earnings, then score stocks."""
         log.info("=== [7/9] Fetching research data ===")
         if not self.finnhub_client:
-            return {"news": {}, "fundamentals": {}}
+            return {"news": {}, "fundamentals": {}, "stock_scores": []}
 
         pm_dict = state.get("portfolio_metrics")
         if not pm_dict:
-            return {"news": {}, "fundamentals": {}}
+            return {"news": {}, "fundamentals": {}, "stock_scores": []}
 
         alerts = state.get("alerts", [])
         pm = dict_to_metrics(pm_dict)
@@ -483,15 +664,46 @@ class PipelineNodes:
 
         news_data: dict[str, list] = {}
         fund_data: dict[str, dict | None] = {}
+        profile_data: dict[str, dict | None] = {}
+
+        # Build symbol map for ALL positions (cheap — no API calls)
+        symbol_map: dict[str, str] = {}
+        for p in pm.positions:
+            symbol_map[p.ticker] = extract_symbol(p.ticker)
 
         for ticker in target_tickers:
-            symbol = extract_symbol(ticker)
+            symbol = symbol_map.get(ticker, extract_symbol(ticker))
             log.info("Fetching news + fundamentals: %s → %s", ticker, symbol)
             news_data[symbol] = self.finnhub_client.get_company_news(symbol, days_back=3)
             fund_data[symbol] = self.finnhub_client.get_basic_financials(symbol)
+            profile_data[symbol] = self.finnhub_client.get_company_profile(symbol)
             time.sleep(0.3)  # rate limit
 
-        return {"news": news_data, "fundamentals": fund_data}
+        # Fetch earnings calendar (single API call covers all symbols)
+        earnings_calendar: dict[str, str] = {}
+        try:
+            earnings_calendar = self.finnhub_client.get_earnings_calendar(days_ahead=14)
+            if earnings_calendar:
+                log.info("Earnings calendar: %d upcoming", len(earnings_calendar))
+        except Exception as e:
+            log.warning("Earnings calendar fetch failed: %s", e)
+
+        # Score all positions (degrades gracefully for tickers without data)
+        scores = score_stocks(
+            positions=pm.positions,
+            fundamentals=fund_data,
+            profiles=profile_data,
+            earnings_calendar=earnings_calendar,
+            symbol_map=symbol_map,
+        )
+        scored_count = sum(1 for s in scores if s.fundamental_score >= 0)
+        log.info("Scored %d/%d positions (with fundamentals)", scored_count, len(scores))
+
+        return {
+            "news": news_data,
+            "fundamentals": fund_data,
+            "stock_scores": [asdict(s) for s in scores],
+        }
 
     # ── Node 8: Analyse ────────────────────────────────────────────
 
@@ -531,6 +743,8 @@ class PipelineNodes:
             rebalance_options=state.get("rebalance_options"),
             news=state.get("news") or None,
             fundamentals=state.get("fundamentals") or None,
+            stock_scores=state.get("stock_scores") or None,
+            dca_signals=state.get("dca_signals") or None,
         )
 
         return {"report": report.model_dump() if report else None}
@@ -559,11 +773,11 @@ class PipelineNodes:
 
         self.notifier.send(message)
 
-        # Update persistent state
+        # Update persistent state (save current alerts for stale-alert tracking)
         ps = PersistentState(
             **(state.get("persistent_state") or {})
         )
-        ps = self.store.mark_run(ps)
+        ps = self.store.mark_run(ps, alerts=alerts)
         self.store.save_state(ps)
 
         log.info("=== Pipeline complete ===")
