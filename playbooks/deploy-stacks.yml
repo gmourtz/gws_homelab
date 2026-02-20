@@ -2,7 +2,8 @@
 # Deploy Docker Compose stacks to homelab hosts
 #
 # Each host has a single compose file: stacks/<hostname>.yml
-# This playbook copies it to the host and runs docker compose up.
+# This playbook templates it to the host (resolving vault secrets)
+# and runs docker compose up.
 #
 # Usage:
 #   make stacks
@@ -27,13 +28,13 @@
         group: "{{ admin_user }}"
         mode: "0755"
 
-    - name: Copy compose file to host
-      ansible.builtin.copy:
+    - name: Template compose file to host
+      ansible.builtin.template:
         src: "{{ stacks_src }}/{{ inventory_hostname }}.yml"
         dest: "{{ stacks_dest }}/docker-compose.yml"
         owner: "{{ admin_user }}"
         group: "{{ admin_user }}"
-        mode: "0644"
+        mode: "0600"
 
     - name: Log in to GHCR
       community.docker.docker_login:
