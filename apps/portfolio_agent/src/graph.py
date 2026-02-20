@@ -52,8 +52,11 @@ class AgentState(TypedDict, total=False):
     stock_scores: list[dict]
     bucket_drifts: list[dict]
     rebalance_options: list[dict]
+    bucket_assignments: dict
     alerts: list[dict]
     action_required: bool
+    dca_signals: list[dict]
+    opportunities: list[dict]
 
     # LLM output
     report: dict | None
