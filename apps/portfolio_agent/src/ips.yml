@@ -1,0 +1,82 @@
+# ──────────────────────────────────────────────────────────────────
+# Investment Policy Statement (IPS)
+# ──────────────────────────────────────────────────────────────────
+# Version-controlled.  Every rule, threshold, and allocation target
+# lives here.  The agent enforces this policy — the LLM does not.
+# ──────────────────────────────────────────────────────────────────
+
+version: 1
+base_currency: GBP
+fx_treatment: convert_at_snapshot   # T212 already reports in account currency
+
+# ─── Strategic target allocation ─────────────────────────────────
+# Each bucket groups markets.  Targets must sum to 100.
+#
+# 5/25 band rule (industry-standard, low-noise):
+#   BREACH when  abs(actual − target) > band_abs          (absolute)
+#           OR   abs(actual − target) / target > band_rel  (relative)
+# For big allocations the absolute band triggers first;
+# for small ones the relative band triggers first.
+
+allocation:
+  buckets:
+    - name: US Equity
+      markets: [US]
+      target_pct: 50.0
+      band_abs: 5.0       # percentage-point band
+      band_rel: 25.0       # percent-of-target band
+
+    - name: UK Equity
+      markets: [UK]
+      target_pct: 20.0
+      band_abs: 5.0
+      band_rel: 25.0
+
+    - name: EU Equity
+      markets: [DE, FR, NL, IT, ES]
+      target_pct: 15.0
+      band_abs: 5.0
+      band_rel: 25.0
+
+    - name: Other Equity
+      markets: ["*"]        # catch-all for unmatched markets
+      target_pct: 10.0
+      band_abs: 5.0
+      band_rel: 25.0
+
+    - name: Cash
+      type: cash
+      target_pct: 5.0
+      band_abs: 3.0
+      band_rel: 25.0
+
+# ─── Hard limits (risk controls) ────────────────────────────────
+hard_limits:
+  max_single_name_pct: 20.0
+  max_top3_pct: 50.0
+  max_single_market_pct: 70.0
+  min_cash_pct: 2.0
+  max_cash_pct: 25.0
+  max_drawdown_pct: 20.0        # requires ≥ 30 days of history
+
+# ─── Rebalancing policy ─────────────────────────────────────────
+rebalancing:
+  cadence: monthly               # annual | quarterly | monthly
+  method: hybrid                 # threshold | calendar | hybrid
+  # hybrid = ACTION if cadence reached OR any band breached OR hard limit hit
+
+# ─── Action governance ───────────────────────────────────────────
+governance:
+  action_description: "Review required today"
+  action_review_days: 0
+  warning_description: "Review within 7 days"
+  warning_review_days: 7
+  info_description: "Monitor — no action needed"
+
+# ─── P/L thresholds ─────────────────────────────────────────────
+thresholds:
+  profit_taking_pct: 100.0       # flag position gains above this
+  deep_loss_pct: -30.0           # flag position losses below this
+  critical_loss_pct: -50.0       # escalate to ACTION
+  health_warning: 60
+  health_critical: 40
