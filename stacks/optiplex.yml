@@ -52,7 +52,7 @@ services:
       AUDIO_ONLY: "false"
       STATE_FILE_NAME: .downloaded_videos.log
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'python.*main' || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -77,7 +77,7 @@ services:
       AUDIO_FORMAT: flac
       STATE_FILE_NAME: .downloaded_music.log
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'python.*main' || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -105,7 +105,7 @@ services:
       TOP_N_FOR_NEWS: "5"
       DATA_DIR: "/data"
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'python.*main' || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
       interval: 30s
       timeout: 5s
       retries: 3
