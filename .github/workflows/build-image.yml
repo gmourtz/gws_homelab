@@ -32,6 +32,9 @@ jobs:
           else
             CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- apps/ | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(. != ""))')
           fi
+          if [[ -z "$CHANGED" || "$CHANGED" == "null" ]]; then
+            CHANGED="[]"
+          fi
           echo "apps=${CHANGED}" >> "$GITHUB_OUTPUT"
           echo "Changed apps: ${CHANGED}"
 
@@ -79,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: ${{ fromJson(needs.detect.outputs.apps) }}
+        app: ${{ fromJson(needs.detect.outputs.apps || '[]') }}
     permissions:
       contents: read
       packages: write
@@ -135,7 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: ${{ fromJson(needs.detect.outputs.apps) }}
+        app: ${{ fromJson(needs.detect.outputs.apps || '[]') }}
     permissions:
       contents: read
       security-events: write
