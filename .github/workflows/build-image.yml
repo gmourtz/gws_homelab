@@ -130,8 +130,8 @@ jobs:
 
   # --- Scan images for vulnerabilities ---
   scan:
-    needs: build
-    if: github.event_name == 'push'
+    needs: [detect, build]
+    if: github.event_name == 'push' && needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
     runs-on: ubuntu-latest
     strategy:
       matrix:
