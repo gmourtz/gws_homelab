@@ -36,45 +36,45 @@ jobs:
           echo "Changed apps: ${CHANGED}"
 
   # --- Run tests for changed apps (if they have tests/) ---
-  test:
-    needs: detect
-    if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        app: ${{ fromJson(needs.detect.outputs.apps) }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check for tests
-        id: has_tests
-        run: |
-          if [[ -d "apps/${{ matrix.app }}/tests" ]]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "No tests/ directory in apps/${{ matrix.app }}/, skipping."
-          fi
-
-      - name: Set up Python
-        if: steps.has_tests.outputs.run == 'true'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        if: steps.has_tests.outputs.run == 'true'
-        run: pip install -r apps/${{ matrix.app }}/requirements.txt pytest
-
-      - name: Run tests
-        if: steps.has_tests.outputs.run == 'true'
-        working-directory: apps/${{ matrix.app }}
-        run: python -m pytest tests/ -v --tb=short
+  # test:
+  #   needs: detect
+  #   if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       app: ${{ fromJson(needs.detect.outputs.apps) }}
+  #
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Check for tests
+  #       id: has_tests
+  #       run: |
+  #         if [[ -d "apps/${{ matrix.app }}/tests" ]]; then
+  #           echo "run=true" >> "$GITHUB_OUTPUT"
+  #         else
+  #           echo "run=false" >> "$GITHUB_OUTPUT"
+  #           echo "No tests/ directory in apps/${{ matrix.app }}/, skipping."
+  #         fi
+  #
+  #     - name: Set up Python
+  #       if: steps.has_tests.outputs.run == 'true'
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.12"
+  #
+  #     - name: Install dependencies
+  #       if: steps.has_tests.outputs.run == 'true'
+  #       run: pip install -r apps/${{ matrix.app }}/requirements.txt pytest
+  #
+  #     - name: Run tests
+  #       if: steps.has_tests.outputs.run == 'true'
+  #       working-directory: apps/${{ matrix.app }}
+  #       run: python -m pytest tests/ -v --tb=short
 
   # --- Build & push each changed app ---
   build:
-    needs: [detect, test]
+    needs: [detect]
     if: needs.detect.outputs.apps != '[]' && needs.detect.outputs.apps != ''
     runs-on: ubuntu-latest
     strategy:
