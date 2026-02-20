@@ -20,6 +20,8 @@ services:
     image: henrygd/beszel:latest
     container_name: beszel-hub
     restart: unless-stopped
+    networks:
+      - beszel-net
     ports:
       - "8090:8090"
     volumes:
@@ -36,6 +38,8 @@ services:
     container_name: youtube-video-downloader
     restart: unless-stopped
     mem_limit: 1g
+    networks:
+      - youtube-video-net
     volumes:
       - /mnt/media/videos:/videos
       - /mnt/media/youtube/token.json:/app/token.json
@@ -58,6 +62,8 @@ services:
     container_name: youtube-music-downloader
     restart: unless-stopped
     mem_limit: 1g
+    networks:
+      - youtube-music-net
     volumes:
       - /mnt/media/music:/videos
       - /mnt/media/youtube/token.json:/app/token.json
@@ -82,6 +88,8 @@ services:
     container_name: portfolio-agent
     restart: unless-stopped
     mem_limit: 512m
+    networks:
+      - portfolio-net
     volumes:
       - portfolio-data:/data
     environment:
@@ -107,6 +115,8 @@ services:
     image: jellyfin/jellyfin:latest
     container_name: jellyfin
     restart: unless-stopped
+    networks:
+      - jellyfin-net
     ports:
       - "8096:8096"
     volumes:
@@ -118,6 +128,18 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+networks:
+  beszel-net:
+    driver: bridge
+  youtube-video-net:
+    driver: bridge
+  youtube-music-net:
+    driver: bridge
+  portfolio-net:
+    driver: bridge
+  jellyfin-net:
+    driver: bridge
 
 volumes:
   beszel-data:
