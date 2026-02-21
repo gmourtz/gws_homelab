@@ -1,30 +1,14 @@
-# ──────────────────────────────────────────────────────────────────
-# Investment Policy Statement (IPS)
-# ──────────────────────────────────────────────────────────────────
-# Version-controlled.  Every rule, threshold, and allocation target
-# lives here.  The agent enforces this policy — the LLM does not.
-# ──────────────────────────────────────────────────────────────────
-
-version: 1
+version: 2
 base_currency: GBP
-fx_treatment: convert_at_snapshot   # T212 already reports in account currency
-
-# ─── Strategic target allocation ─────────────────────────────────
-# Each bucket groups markets.  Targets must sum to 100.
-#
-# 5/25 band rule (industry-standard, low-noise):
-#   BREACH when  abs(actual − target) > band_abs          (absolute)
-#           OR   abs(actual − target) / target > band_rel  (relative)
-# For big allocations the absolute band triggers first;
-# for small ones the relative band triggers first.
+fx_treatment: convert_at_snapshot
 
 allocation:
   buckets:
     - name: US Equity
       markets: [US]
-      target_pct: 50.0
-      band_abs: 5.0       # percentage-point band
-      band_rel: 25.0       # percent-of-target band
+      target_pct: 53.0
+      band_abs: 5.0
+      band_rel: 25.0
 
     - name: UK Equity
       markets: [UK]
@@ -32,40 +16,32 @@ allocation:
       band_abs: 5.0
       band_rel: 25.0
 
-    - name: EU Equity
-      markets: [DE, FR, NL, IT, ES]
-      target_pct: 15.0
-      band_abs: 5.0
-      band_rel: 25.0
-
-    - name: Other Equity
-      markets: ["*"]        # catch-all for unmatched markets
+    # Merge EU + Other into one realistic sleeve.
+    # Put this after US/UK so "*" acts as "everything else".
+    - name: International Equity
+      markets: [DE, FR, NL, IT, ES, "*"]
       target_pct: 10.0
-      band_abs: 5.0
-      band_rel: 25.0
+      band_abs: 4.0
+      band_rel: 80.0   # wider to avoid constant triggers on small sleeves
 
     - name: Cash
       type: cash
-      target_pct: 5.0
-      band_abs: 3.0
+      target_pct: 20.0
+      band_abs: 5.0
       band_rel: 25.0
 
-# ─── Hard limits (risk controls) ────────────────────────────────
 hard_limits:
   max_single_name_pct: 20.0
   max_top3_pct: 50.0
   max_single_market_pct: 70.0
   min_cash_pct: 2.0
-  max_cash_pct: 25.0
-  max_drawdown_pct: 20.0        # requires ≥ 30 days of history
+  max_cash_pct: 30.0      # was 25; aligns with holding ~24% without instant escalation
+  max_drawdown_pct: 20.0
 
-# ─── Rebalancing policy ─────────────────────────────────────────
 rebalancing:
-  cadence: monthly               # annual | quarterly | monthly
-  method: hybrid                 # threshold | calendar | hybrid
-  # hybrid = ACTION if cadence reached OR any band breached OR hard limit hit
+  cadence: quarterly
+  method: threshold        # rebalance only when bands/limits are breached
 
-# ─── Action governance ───────────────────────────────────────────
 governance:
   action_description: "Review required today"
   action_review_days: 0
@@ -73,10 +49,9 @@ governance:
   warning_review_days: 7
   info_description: "Monitor — no action needed"
 
-# ─── P/L thresholds ─────────────────────────────────────────────
 thresholds:
-  profit_taking_pct: 100.0       # flag position gains above this
-  deep_loss_pct: -30.0           # flag position losses below this
-  critical_loss_pct: -50.0       # escalate to ACTION
+  profit_taking_pct: 100.0
+  deep_loss_pct: -30.0
+  critical_loss_pct: -50.0
   health_warning: 60
   health_critical: 40
