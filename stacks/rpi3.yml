@@ -1,4 +1,29 @@
 services:
+  # --- DNS & Ad Blocking ---
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "80:80/tcp"
+    environment:
+      TZ: "Europe/London"
+      WEBPASSWORD: "{{ vault_pihole_password }}"
+    volumes:
+      - pihole-data:/etc/pihole
+      - pihole-dnsmasq:/etc/dnsmasq.d
+    configs:
+      - source: local-dns
+        target: /etc/dnsmasq.d/02-local-dns.conf
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost/admin/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- Monitoring ---
   beszel-agent:
     image: henrygd/beszel-agent:latest
     container_name: beszel-agent
@@ -14,3 +39,16 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+configs:
+  local-dns:
+    content: |
+      # Homelab local DNS — maps service names to LAN IPs
+      address=/optiplex/192.168.1.150
+      address=/beszel/192.168.1.150
+      address=/jellyfin/192.168.1.150
+      address=/rpi3/192.168.1.145
+
+volumes:
+  pihole-data:
+  pihole-dnsmasq:
