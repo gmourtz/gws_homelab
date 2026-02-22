@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Under Construction</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f0f0f0;
+      text-align: center;
+      padding-top: 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      font-size: 48px;
+      color: #333;
+    }
+    p {
+      font-size: 24px;
+      color: #666;
+    }
+    .progress-bar-container {
+      width: 80%;
+      max-width: 600px;
+      background-color: #e0e0e0;
+      border-radius: 25px;
+      margin-top: 50px;
+    }
+    .progress-bar {
+      width: 0%;
+      height: 30px;
+      background-color: #4caf50;
+      text-align: center;
+      line-height: 30px;
+      color: white;
+      border-radius: 25px;
+      transition: width 2.5s ease-in-out;
+    }
+  </style>
+</head>
+<body>
+  <h1>Under Construction</h1>
+  <p>This page is currently under construction. Please check back later.</p>
+  <div class="progress-bar-container">
+    <div class="progress-bar" id="myBar">0%</div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      let bar = document.getElementById('myBar');
+      let width = 0;
+      let interval = setInterval(frame, 25);
+
+      function frame() {
+        if (width >= 80) {
+          clearInterval(interval);
+        } else {
+          width++;
+          bar.style.width = width + '%';
+          bar.innerHTML = width + '%';
+        }
+      }
+    };
+  </script>
+</body>
+</html>
