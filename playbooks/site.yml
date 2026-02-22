@@ -35,6 +35,33 @@
       community.general.timezone:
         name: "{{ timezone }}"
 
+    # --- DNS (free port 53 for Pi-hole) ---
+    - name: Disable systemd-resolved stub listener
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/resolved.conf
+        regexp: "^#?DNSStubListener"
+        line: "DNSStubListener=no"
+      when: disable_resolved_stub | default(false)
+      notify: Restart systemd-resolved
+
+    - name: Point resolv.conf to systemd-resolved full resolver
+      ansible.builtin.file:
+        src: /run/systemd/resolve/resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+        force: true
+      when: disable_resolved_stub | default(false)
+
+    - name: Populate /etc/hosts from dns_records
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: ".*# homelab: {{ item.name }}$"
+        line: "{{ item.ip }}  {{ item.name }} {{ (item.aliases | default([])) | join(' ') }}  # homelab: {{ item.name }}"
+        state: present
+      loop: "{{ dns_records | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+
     # --- SSH hardening ---
     - name: Disable SSH password auth & root login
       ansible.builtin.lineinfile:
@@ -223,4 +250,9 @@
     - name: Restart fail2ban
       ansible.builtin.systemd:
         name: fail2ban
+        state: restarted
+
+    - name: Restart systemd-resolved
+      ansible.builtin.systemd:
+        name: systemd-resolved
         state: restarted

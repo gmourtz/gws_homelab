@@ -1,6 +1,10 @@
 ---
 # Host vars for rpi3
 
+# Pi-hole runs on this host — disable systemd-resolved stub listener
+# so Pi-hole can bind port 53
+disable_resolved_stub: true
+
 # UFW extra rules — ports needed by stacks on this host
 ufw_extra_rules:
   # Pi-hole DNS
