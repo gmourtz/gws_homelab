@@ -9,6 +9,7 @@ disable_resolved_stub: true
 pihole_allowlist:
   - mask.icloud.com       # Apple Private Relay
   - mask-h2.icloud.com    # Apple Private Relay (HTTP/2)
+  - mask-api.icloud.com   # Apple Private Relay API — also required for Apple Intelligence
 
 # UFW extra rules — ports needed by stacks on this host
 ufw_extra_rules:
