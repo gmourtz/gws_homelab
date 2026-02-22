@@ -26,3 +26,12 @@ ghcr_registry: ghcr.io
 
 # Stacks deployment
 stacks_dest: /opt/stacks
+
+# Local DNS records — served by Pi-hole (dnsmasq) on rpi3
+# Also used to populate /etc/hosts on all hosts
+# Format: { name: "<hostname>", ip: "<ip>", aliases: ["<alias1>", ...] }
+# - name: the primary hostname (typically the inventory hostname)
+# - aliases: optional service names that resolve to the same IP
+dns_records:
+  - { name: optiplex, ip: "192.168.1.150", aliases: [beszel, jellyfin] }
+  - { name: rpi3,     ip: "192.168.1.145", aliases: [pihole] }

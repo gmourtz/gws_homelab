@@ -11,6 +11,8 @@ services:
     environment:
       TZ: "Europe/London"
       WEBPASSWORD: "{{ vault_pihole_password }}"
+      PIHOLE_DNS_1: "1.1.1.1"
+      PIHOLE_DNS_2: "8.8.8.8"
     volumes:
       - pihole-data:/etc/pihole
       - pihole-dnsmasq:/etc/dnsmasq.d
@@ -43,11 +45,11 @@ services:
 configs:
   local-dns:
     content: |
-      # Homelab local DNS — maps service names to LAN IPs
-      address=/optiplex/192.168.1.150
-      address=/beszel/192.168.1.150
-      address=/jellyfin/192.168.1.150
-      address=/rpi3/192.168.1.145
+      # Homelab local DNS — auto-generated from dns_records variable
+      # To add entries, edit dns_records in inventory/group_vars/all/main.yml
+{% for record in dns_records %}
+      address=/{{ record.name }}.home/{{ record.name }}{% if record.aliases is defined %}{% for alias in record.aliases %}/{{ alias }}.home/{{ alias }}{% endfor %}{% endif %}/{{ record.ip }}
+{% endfor %}
 
 volumes:
   pihole-data:
