@@ -49,3 +49,10 @@
         project_src: "{{ stacks_dest }}"
         pull: always
         state: present
+
+    - name: Configure Pi-hole allowlist
+      ansible.builtin.command:
+        cmd: docker exec pihole pihole allow {{ item }}
+      loop: "{{ pihole_allowlist }}"
+      when: pihole_allowlist is defined
+      changed_when: false
