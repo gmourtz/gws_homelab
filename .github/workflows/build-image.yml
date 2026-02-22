@@ -9,6 +9,12 @@ on:
   pull_request:
     paths:
       - 'apps/**'
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "App directory under apps/ (e.g. georgios-website). Leave empty to auto-detect changed apps."
+        required: false
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -27,7 +33,9 @@ jobs:
       - name: Detect changed apps
         id: changed
         run: |
-          if [[ "${{ github.event_name }}" == "push" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.app }}" ]]; then
+            CHANGED=$(printf '%s\n' "${{ github.event.inputs.app }}" | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
             CHANGED=$(git diff --name-only HEAD~1 HEAD -- apps/ | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(. != ""))')
           else
             CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- apps/ | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(. != ""))')

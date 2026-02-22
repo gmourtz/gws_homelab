@@ -110,6 +110,35 @@ services:
       timeout: 5s
       retries: 3
 
+  # --- Personal website ---
+  georgios-website:
+    image: ghcr.io/gmourtz/georgios-website:latest
+    container_name: georgios-website
+    restart: unless-stopped
+    networks:
+      - website-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    command: tunnel --no-autoupdate --metrics 0.0.0.0:2000 run --token {{ vault_cf_tunnel_token }}
+    restart: unless-stopped
+    networks:
+      - website-net
+    depends_on:
+      georgios-website:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:2000/metrics || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # --- Media server ---
   jellyfin:
     image: jellyfin/jellyfin:latest
@@ -140,8 +169,11 @@ networks:
     driver: bridge
   jellyfin-net:
     driver: bridge
+  website-net:
+    driver: bridge
 
 volumes:
   beszel-data:
   jellyfin-config:
   portfolio-data:
+
