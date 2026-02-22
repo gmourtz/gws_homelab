@@ -13,6 +13,7 @@ services:
       WEBPASSWORD: "{{ vault_pihole_password }}"
       PIHOLE_DNS_1: "1.1.1.1"
       PIHOLE_DNS_2: "8.8.8.8"
+      DNSMASQ_LISTENING: all
     volumes:
       - pihole-data:/etc/pihole
       - pihole-dnsmasq:/etc/dnsmasq.d
