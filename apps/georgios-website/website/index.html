@@ -4,209 +4,215 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>George Mourtzinos | Data & AI Consultant</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     :root {
-      --bg: #f9fafb;
-      --primary: #1769cc;
-      --text: #1f2937;
-      --muted: #6b7280;
-      --white: #ffffff;
-      --card-radius: 12px;
+      --bg: #0d1117;
+      --surface: #161b22;
+      --primary: #58a6ff;
+      --text: #c9d1d9;
+      --text-bright: #f0f6fc;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --max-width: 680px;
     }
-    * {
-      box-sizing: border-box;
-    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background-color: var(--bg);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
       color: var(--text);
-      line-height: 1.6;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
     }
-    .hero {
-      background: var(--primary);
-      color: var(--white);
+
+    header {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 4rem 1.5rem 2rem;
+    }
+
+    .header-row {
       display: flex;
       align-items: center;
-      gap: 2rem;
-      padding: 2rem;
-      border-radius: 0 0 var(--card-radius) var(--card-radius);
-      margin: 0rem auto;
-      max-width: 960px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      gap: 1.5rem;
     }
-    .hero h1 {
-      font-size: 2.5rem;
-      margin-bottom: 0.5rem;
-    }
+
     .profile-photo {
-      width: 150px;
-      height: 150px;
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
       object-fit: cover;
       flex-shrink: 0;
+      border: 2px solid var(--border);
     }
-    .hero-text {
-      text-align: left;
-    }
-    .hero p {
-      font-size: 1.1rem;
-      margin-bottom: 1.5rem;
-      color: #f0f9ff;
-    }
-    .hero nav {
-      display: flex;
-      justify-content: center;
-      gap: 1.5rem;
-      flex-wrap: wrap;
-    }
-    .hero nav a {
-      text-decoration: none;
-      color: var(--white);
-      font-weight: 600;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      transition: background 0.2s ease;
-    }
-    .hero nav a:hover {
-      background: #dbeafe;
-      color: var(--primary);
-    }
-    main {
-      max-width: 960px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      display: grid;
-      gap: 2rem;
-    }
-    section {
-      background: var(--white);
-      padding: 2rem;
-      border-radius: var(--card-radius);
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      transition: transform 0.2s ease;
-    }
-    section:hover {
-      transform: translateY(-2px);
-    }
-    h2 {
-      margin-top: 0;
-      font-size: 1.75rem;
-      color: var(--primary);
-      border-bottom: 2px solid #e5e7eb;
-      padding-bottom: 0.5rem;
-    }
-    ul {
-      padding-left: 1.5rem;
-    }
-    li {
-      margin-bottom: 0.5rem;
-    }
-    a {
-      color: var(--primary);
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-    footer {
-      background: var(--primary);
-      color: #e0e7ff;
-      text-align: center;
-      padding: 1.5rem 1rem;
-      font-size: 0.9rem;
-      border-radius: var(--card-radius);
-      margin: 1rem auto;
-      max-width: 960px;
-    }
-    .footer-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
-    }
-    .resume-button {
-      background-color: var(--white);
-      color: var(--primary);
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: 600;
-      transition: background-color 0.3s ease;
-    }
-    .resume-button:hover {
-      background-color: #e0e7ff;
-    }
-    .social-icons {
-      display: flex;
-      gap: 1rem;
-    }
-    .social-icons a {
-      color: var(--white);
+
+    .header-info h1 {
       font-size: 1.5rem;
-      transition: color 0.3s ease;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+      color: var(--text-bright);
     }
-    .social-icons a:hover {
-      color: #dbeafe;
+
+    .header-info p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
     }
+
+    .header-links {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .header-links a {
+      color: var(--text-secondary);
+      font-size: 1.25rem;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .header-links a:hover { color: var(--text-bright); }
+
+    main {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 1.5rem 4rem;
+    }
+
+    section {
+      padding: 2rem 0;
+      border-top: 1px solid var(--border);
+    }
+
+    section:first-child { border-top: none; }
+
+    h2 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+
+    section p {
+      font-size: 0.95rem;
+      color: var(--text);
+      line-height: 1.8;
+    }
+
+    section p + p {
+      margin-top: 0.75rem;
+    }
+
+    #skills ul {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    #skills li {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+
     #certifications ul {
       list-style: none;
-      padding: 0;
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
     }
+
     #certifications li {
       display: flex;
       align-items: center;
-      margin-bottom: 1rem;
+      gap: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text);
     }
+
     .cert-logo {
-      width: 50px;
-      height: 50px;
-      margin-right: 15px;
+      width: 36px;
+      height: 36px;
       object-fit: contain;
+      flex-shrink: 0;
     }
+
+    #contact p {
+      font-size: 0.95rem;
+      margin-bottom: 0.4rem;
+    }
+
+    #contact a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    #contact a:hover { text-decoration: underline; }
+
+    footer {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+
     @media (max-width: 600px) {
-      .hero h1 {
-        font-size: 2rem;
-      }
-      .hero p {
-        font-size: 1rem;
-      }
-      .footer-content {
-        flex-direction: column;
-        align-items: center;
-      }
+      header { padding-top: 2.5rem; }
+      .header-info h1 { font-size: 1.25rem; }
+      .profile-photo { width: 64px; height: 64px; }
+    }
+
+    @media (min-width: 601px) {
+      #certifications ul { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
 <body>
-  <section class="hero">
-    <img src="media/Photo profile.png" alt="George Mourtzinos Profile Photo" class="profile-photo">
-    <div class="hero-text">
-      <h1>George Mourtzinos</h1>
-      <p>Data & AI Consultant | Cloud-Native Architect | Business Value-Driven Builder</p>
+  <header>
+    <div class="header-row">
+      <img src="media/Photo profile.png" alt="George Mourtzinos Profile Photo" class="profile-photo">
+      <div class="header-info">
+        <h1>George Mourtzinos</h1>
+        <p>Data & AI Consultant | Cloud-Native Architect | Business Value-Driven Builder</p>
+      </div>
     </div>
-    <!-- <nav>
-      <a href="#about">About</a>
-      <a href="#skills">Skills</a>
-      <a href="#projects">Projects</a>
-      <a href="#certifications">Certifications</a>
-      <a href="#contact">Contact</a>
-    </nav> -->
-  </section>
+    <div class="header-links">
+      <a href="mailto:gmourtzinos@icloud.com" aria-label="Email"><i class="fas fa-envelope"></i></a>
+      <a href="https://www.linkedin.com/in/georgemourtzinos" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+      <a href="https://github.com/gmourtz" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+    </div>
+  </header>
 
   <main>
     <section id="about">
-      <h2>About Me</h2>
-      <p>👋 Hi, I’m George — a results-driven Data & AI Engineer with a passion for building scalable data infrastructure that powers insights and drives business value.<br><br>
-        🧠 I specialise in designing end-to-end data pipelines across cloud-native platforms like AWS, Snowflake, and Azure, enabling data scientists and analysts to make informed decisions faster.<br><br>
-        🧰 I bring strong problem-solving skills, strategic thinking, and technical leadership, with experience mentoring teams and driving high-impact projects that save costs and boost performance.<br><br>
-        📚 I'm continuously learning and evolving—always exploring the latest tools, frameworks, and methodologies in the data space.
-      </p>
+      <h2>About</h2>
+      <p>Hi, I'm George — a results-driven Data & AI Engineer with a passion for building scalable data infrastructure that powers insights and drives business value.</p>
+      <p>I specialise in designing end-to-end data pipelines across cloud-native platforms like AWS, Snowflake, and Azure, enabling data scientists and analysts to make informed decisions faster.</p>
+      <p>I bring strong problem-solving skills, strategic thinking, and technical leadership, with experience mentoring teams and driving high-impact projects that save costs and boost performance.</p>
+      <p>I'm continuously learning and evolving—always exploring the latest tools, frameworks, and methodologies in the data space.</p>
     </section>
 
     <!-- <section id="projects">
@@ -223,10 +229,30 @@
     <section id="skills">
       <h2>Skills</h2>
       <ul>
-        <li>Programming Languages: SQL, Python, Cypher</li>
-        <li>Platforms, Tools: Snowflake, AWS, dbt, Databricks, Meltano, Matillion, Terraform, PowerBI, Git, Docker, Airflow</li>
-        <li>Concepts: ELT/ETL, Platform Design, CI/CD, IaC, Data Quality and Governance</li>
-        <li>Leadership & Delivery: Mentorship, Stakeholder Management, Agile, Project Delivery</li>
+        <li>SQL</li>
+        <li>Python</li>
+        <li>Cypher</li>
+        <li>Snowflake</li>
+        <li>AWS</li>
+        <li>dbt</li>
+        <li>Databricks</li>
+        <li>Meltano</li>
+        <li>Matillion</li>
+        <li>Terraform</li>
+        <li>PowerBI</li>
+        <li>Git</li>
+        <li>Docker</li>
+        <li>Airflow</li>
+        <li>ELT / ETL</li>
+        <li>Platform Design</li>
+        <li>CI/CD</li>
+        <li>IaC</li>
+        <li>Data Quality</li>
+        <li>Data Governance</li>
+        <li>Mentorship</li>
+        <li>Stakeholder Management</li>
+        <li>Agile</li>
+        <li>Project Delivery</li>
       </ul>
     </section>
 
@@ -248,29 +274,20 @@
     <section id="contact">
       <h2>Contact</h2>
       <p>Email: <a href="mailto:gmourtzinos@icloud.com">gmourtzinos@icloud.com</a></p>
-      <p>LinkedIn: <a href="https://www.linkedin.com/in/georgemourtzinos/" target="_blank">https://www.linkedin.com/in/georgemourtzinos/</a></p>
+      <p>LinkedIn: <a href="https://www.linkedin.com/in/georgemourtzinos/" target="_blank">linkedin.com/in/georgemourtzinos</a></p>
     </section>
   </main>
 
   <footer>
-    <div class="footer-content">
-      <!-- <a class="resume-button" href="George_Mourtzinos_CV.pdf" download>Download My Resume</a> -->
-      <div class="social-icons">
-        <a href="mailto:gmourtzinos@icloud.com" target="_blank" aria-label="Email"><i class="fas fa-envelope"></i></a>
-        <a href="https://www.linkedin.com/in/georgemourtzinos" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-        <a href="https://github.com/gmourtz" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
-        <!-- <a href="https://twitter.com/georgemourtzinos" target="_blank" aria-label="Twitter"><i class="fab fa-twitter"></i></a> -->
-      </div>
-      <p>&copy; 2026 George Mourtzinos</p>
-    </div>
+    <p>&copy; 2026 George Mourtzinos</p>
   </footer>
   <!-- Cal floating-popup embed code begins -->
   <script type="text/javascript">
   (function (C, A, L) { let p = function (a, ar) { a.q.push(ar); }; let d = C.document; C.Cal = C.Cal || function () { let cal = C.Cal; let ar = arguments; if (!cal.loaded) { cal.ns = {}; cal.q = cal.q || []; d.head.appendChild(d.createElement("script")).src = A; cal.loaded = true; } if (ar[0] === L) { const api = function () { p(api, arguments); }; const namespace = ar[1]; api.q = api.q || []; if(typeof namespace === "string"){cal.ns[namespace] = cal.ns[namespace] || api;p(cal.ns[namespace], ar);p(cal, ["initNamespace", namespace]);} else p(cal, ar); return;} p(cal, ar); }; })(window, "https://app.cal.com/embed/embed.js", "init");
 Cal("init", "30min", {origin:"https://app.cal.com"});
 
-  Cal.ns["30min"]("floatingButton", {"calLink":"george-mourtzinos/30min","config":{"layout":"month_view"},"buttonColor":"#1769cc","buttonTextColor":"#ffffff"}); 
-  Cal.ns["30min"]("ui", {"hideEventTypeDetails":false,"layout":"month_view","cssVarsPerTheme":{"light":{"cal-brand":"#1769cc"}}});
+  Cal.ns["30min"]("floatingButton", {"calLink":"george-mourtzinos/30min","config":{"layout":"month_view"},"buttonColor":"#e6edf3","buttonTextColor":"#0d1117"}); 
+  Cal.ns["30min"]("ui", {"hideEventTypeDetails":false,"layout":"month_view","cssVarsPerTheme":{"light":{"cal-brand":"#e6edf3"}}});
   </script>
   <!-- Cal floating-popup embed code ends -->
 </body>
