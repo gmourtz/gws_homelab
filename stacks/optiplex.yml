@@ -134,7 +134,7 @@ services:
       georgios-website:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:2000/metrics || exit 1"]
+      test: ["CMD", "cloudflared", "version"]
       interval: 30s
       timeout: 5s
       retries: 3
