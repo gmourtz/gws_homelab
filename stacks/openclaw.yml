@@ -9,7 +9,7 @@ services:
     volumes:
       # Official image runs as node user (uid 1000) — config lives in /home/node/.openclaw
       - openclaw-config:/home/node/.openclaw
-    mem_limit: 4g
+    mem_limit: 6g
     cpus: "2.0"
     healthcheck:
       test: ["CMD-SHELL", "openclaw health --json || exit 1"]
