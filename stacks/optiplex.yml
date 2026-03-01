@@ -1,4 +1,33 @@
+configs:
+  caddyfile:
+    content: |
+      # Reverse proxy — auto-generated from proxy_services variable
+{% for svc in proxy_services %}
+      http://{{ svc.name }}.{{ local_domain }} {
+        reverse_proxy {{ svc.upstream }}
+      }
+{% endfor %}
+
 services:
+  # --- Reverse proxy ---
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    networks:
+      - beszel-net
+      - jellyfin-net
+    ports:
+      - "80:80"
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # --- Monitoring ---
   beszel-agent:
     image: henrygd/beszel-agent:latest
@@ -22,8 +51,6 @@ services:
     restart: unless-stopped
     networks:
       - beszel-net
-    ports:
-      - "8090:8090"
     volumes:
       - beszel-data:/beszel_data
     healthcheck:
@@ -52,7 +79,7 @@ services:
       AUDIO_ONLY: "false"
       STATE_FILE_NAME: .downloaded_videos.log
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'python.*main' || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -77,7 +104,7 @@ services:
       AUDIO_FORMAT: flac
       STATE_FILE_NAME: .downloaded_music.log
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'python.*main' || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -105,7 +132,36 @@ services:
       TOP_N_FOR_NEWS: "5"
       DATA_DIR: "/data"
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'python.*main' || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- Personal website ---
+  georgios-website:
+    image: ghcr.io/gmourtz/georgios-website:latest
+    container_name: georgios-website
+    restart: unless-stopped
+    networks:
+      - website-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    command: tunnel --no-autoupdate --metrics 127.0.0.1:2000 run --token {{ vault_cf_tunnel_token }}
+    restart: unless-stopped
+    networks:
+      - website-net
+    depends_on:
+      georgios-website:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "cloudflared", "version"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -117,8 +173,6 @@ services:
     restart: unless-stopped
     networks:
       - jellyfin-net
-    ports:
-      - "8096:8096"
     volumes:
       - jellyfin-config:/config
       - /mnt/media/videos:/media/videos:ro
@@ -140,8 +194,11 @@ networks:
     driver: bridge
   jellyfin-net:
     driver: bridge
+  website-net:
+    driver: bridge
 
 volumes:
   beszel-data:
   jellyfin-config:
   portfolio-data:
+

@@ -666,3 +666,195 @@ def _valuation_signal(
         return "FAIR"
     else:
         return "EXPENSIVE"
+
+
+# ===================================================================
+# DCA / accumulation signals
+# ===================================================================
+
+@dataclass
+class DCASignal:
+    """Moving-average accumulation signal for one position."""
+
+    ticker: str
+    name: str
+    current_price: float
+    sma_30: float | None
+    sma_50: float | None
+    weight_pct: float
+    pnl_pct: float
+    signal: str  # "BUY_ZONE" | "NEUTRAL" | "EXTENDED"
+
+
+def compute_dca_signals(
+    positions: list[PositionMetric],
+    price_history: pd.DataFrame | None,
+) -> list[DCASignal]:
+    """Identify DCA opportunities using simple moving averages.
+
+    BUY_ZONE:  price < SMA-30 (short-term pullback in a position you own).
+    EXTENDED:  price > 1.15 × SMA-50 (over-extended, consider pausing DCA).
+    NEUTRAL:   everything else.
+
+    Returns only positions with at least 20 days of price history.
+    """
+    if price_history is None or len(price_history) < 20:
+        return []
+
+    signals: list[DCASignal] = []
+    for pos in positions:
+        if pos.ticker not in price_history.columns:
+            continue
+
+        prices = price_history[pos.ticker].dropna()
+        if len(prices) < 20:
+            continue
+
+        sma_30 = float(prices.tail(30).mean()) if len(prices) >= 30 else None
+        sma_50 = float(prices.tail(50).mean()) if len(prices) >= 50 else None
+        current = pos.current_price
+
+        if sma_30 is not None and current < sma_30:
+            signal = "BUY_ZONE"
+        elif sma_50 is not None and current > sma_50 * 1.15:
+            signal = "EXTENDED"
+        else:
+            signal = "NEUTRAL"
+
+        signals.append(
+            DCASignal(
+                ticker=pos.ticker,
+                name=pos.name,
+                current_price=current,
+                sma_30=round(sma_30, 2) if sma_30 is not None else None,
+                sma_50=round(sma_50, 2) if sma_50 is not None else None,
+                weight_pct=pos.weight_pct,
+                pnl_pct=pos.pnl_pct,
+                signal=signal,
+            )
+        )
+
+    return signals
+
+
+# ===================================================================
+# Opportunity scanner
+# ===================================================================
+
+@dataclass
+class Opportunity:
+    """An investment opportunity based on IPS gaps + fundamentals."""
+
+    bucket_name: str
+    bucket_drift_pct: float     # negative = underweight
+    ticker: str
+    name: str
+    signal: str                 # "ACCUMULATE" | "DEPLOY_CASH" | "TOP_UP"
+    reason: str
+    fundamental_score: int      # -1 if unknown
+    valuation: str
+    weight_pct: float
+    dca_signal: str | None      # BUY_ZONE / NEUTRAL / EXTENDED / None
+
+
+def scan_opportunities(
+    bucket_drifts: list[dict],
+    stock_scores: list[dict],
+    dca_signals: list[dict],
+    bucket_assignments: dict[str, str],
+    cash_pct: float,
+    min_cash_pct: float = 2.0,
+) -> list[Opportunity]:
+    """Identify deployment opportunities by cross-referencing IPS gaps with fundamentals.
+
+    Logic:
+    1. Find underweight buckets (negative drift).
+    2. For each underweight bucket, find positions in that bucket.
+    3. Rank by: valuation CHEAP > FAIR, fundamental_score descending,
+       DCA BUY_ZONE preferred.
+    4. If cash > min_cash_pct, additionally flag cash-deployment opportunities.
+
+    Returns up to 5 opportunities, sorted by bucket drift magnitude.
+    """
+    # Build lookup maps
+    score_map: dict[str, dict] = {s["ticker"]: s for s in stock_scores}
+    dca_map: dict[str, str] = {s["ticker"]: s.get("signal", "NEUTRAL") for s in dca_signals}
+
+    # Find underweight buckets
+    underweight = [
+        bd for bd in bucket_drifts
+        if bd.get("drift_pct", 0) < -1.0  # at least 1pp underweight
+    ]
+
+    if not underweight:
+        return []
+
+    opportunities: list[Opportunity] = []
+
+    for bd in sorted(underweight, key=lambda x: x.get("drift_pct", 0)):
+        bucket_name = bd["bucket_name"]
+        drift = bd["drift_pct"]
+
+        # Find positions assigned to this bucket
+        bucket_tickers = [
+            t for t, b in bucket_assignments.items() if b == bucket_name
+        ]
+
+        # Score and rank candidates
+        candidates = []
+        for ticker in bucket_tickers:
+            score = score_map.get(ticker, {})
+            fs = score.get("fundamental_score", -1)
+            val = score.get("valuation", "UNKNOWN")
+            dca = dca_map.get(ticker)
+
+            # Priority: CHEAP+BUY_ZONE > CHEAP > FAIR+BUY_ZONE > FAIR > rest
+            rank = 0
+            if val == "CHEAP":
+                rank += 100
+            elif val == "FAIR":
+                rank += 50
+            if dca == "BUY_ZONE":
+                rank += 30
+            elif dca == "EXTENDED":
+                rank -= 20
+            if fs > 0:
+                rank += fs / 10  # 0–10 bonus
+
+            candidates.append((ticker, score, dca, rank))
+
+        candidates.sort(key=lambda x: -x[3])
+
+        for ticker, score, dca, rank in candidates[:2]:
+            name = score.get("name", ticker)
+            fs = score.get("fundamental_score", -1)
+            val = score.get("valuation", "UNKNOWN")
+            wt = score.get("weight_pct", 0)
+
+            # Determine signal type
+            if dca == "BUY_ZONE" and val in ("CHEAP", "FAIR"):
+                signal = "ACCUMULATE"
+                reason = f"{bucket_name} underweight by {abs(drift):.1f}pp; price below SMA-30; {val.lower()} valuation"
+            elif cash_pct > min_cash_pct + 3:
+                signal = "DEPLOY_CASH"
+                reason = f"{bucket_name} underweight by {abs(drift):.1f}pp; excess cash at {cash_pct:.1f}%"
+            else:
+                signal = "TOP_UP"
+                reason = f"{bucket_name} underweight by {abs(drift):.1f}pp"
+
+            opportunities.append(
+                Opportunity(
+                    bucket_name=bucket_name,
+                    bucket_drift_pct=drift,
+                    ticker=ticker,
+                    name=name,
+                    signal=signal,
+                    reason=reason,
+                    fundamental_score=fs,
+                    valuation=val,
+                    weight_pct=wt,
+                    dca_signal=dca,
+                )
+            )
+
+    return opportunities[:5]

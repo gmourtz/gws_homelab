@@ -137,10 +137,14 @@ class PortfolioAnalyzer:
         rebalance_options: list[dict] | None = None,
         news: dict | None = None,
         fundamentals: dict | None = None,
+        stock_scores: list[dict] | None = None,
+        dca_signals: list[dict] | None = None,
+        opportunities: list[dict] | None = None,
     ) -> PortfolioReport | None:
         """Generate structured analysis.  Returns a Pydantic model or None."""
         prompt = self._build_prompt(
-            metrics, alerts, bucket_drifts, ts_metrics, rebalance_options, news, fundamentals
+            metrics, alerts, bucket_drifts, ts_metrics, rebalance_options, news, fundamentals,
+            stock_scores, dca_signals, opportunities,
         )
         log.info("Sending curated metrics to %s (structured output)…", self.model)
         log.debug("Prompt length: %d chars", len(prompt))
@@ -200,6 +204,9 @@ class PortfolioAnalyzer:
         rebalance_options: list[dict] | None,
         news: dict | None,
         fundamentals: dict | None,
+        stock_scores: list[dict] | None = None,
+        dca_signals: list[dict] | None = None,
+        opportunities: list[dict] | None = None,
     ) -> str:
         lines: list[str] = []
 
@@ -312,5 +319,64 @@ class PortfolioAnalyzer:
                     parts = [f"{k}: {v}" for k, v in data.items() if v is not None]
                     if parts:
                         lines.append(f"  {symbol}: {', '.join(parts)}")
+
+        # --- Stock scores ---
+        if stock_scores:
+            scored = [s for s in stock_scores if s.get("fundamental_score", -1) >= 0]
+            if scored:
+                lines += ["", "STOCK SCORES (0-100 fundamental, valuation signal):"]
+                for s in sorted(scored, key=lambda x: -x.get("weight_pct", 0))[:10]:
+                    flags = []
+                    if s.get("earnings_soon"):
+                        flags.append("EARNINGS SOON")
+                    if s.get("high_leverage"):
+                        flags.append("HIGH DEBT")
+                    if s.get("has_negative_growth"):
+                        flags.append("NEG GROWTH")
+                    if s.get("near_52w_low"):
+                        flags.append("NEAR 52W LOW")
+                    if s.get("near_52w_high"):
+                        flags.append("NEAR 52W HIGH")
+                    flag_str = f" [{', '.join(flags)}]" if flags else ""
+                    lines.append(
+                        f"  {s.get('name', '?')} ({s.get('ticker', '?')}): "
+                        f"score={s['fundamental_score']}/100, val={s.get('valuation', '?')}, "
+                        f"wt={s.get('weight_pct', 0):.1f}%, P/L={s.get('pnl_pct', 0):+.0f}%{flag_str}"
+                    )
+
+        # --- DCA signals ---
+        if dca_signals:
+            buy_zone = [s for s in dca_signals if s.get("signal") == "BUY_ZONE"]
+            extended = [s for s in dca_signals if s.get("signal") == "EXTENDED"]
+            if buy_zone or extended:
+                lines += ["", "DCA / ACCUMULATION SIGNALS:"]
+                for s in buy_zone[:5]:
+                    sma = s.get("sma_30")
+                    discount = ((s["current_price"] - sma) / sma * 100) if sma else 0
+                    lines.append(
+                        f"  BUY_ZONE: {s.get('name', '?')} — {discount:+.1f}% vs SMA-30"
+                    )
+                for s in extended[:3]:
+                    sma = s.get("sma_50")
+                    premium = ((s["current_price"] - sma) / sma * 100) if sma else 0
+                    lines.append(
+                        f"  EXTENDED: {s.get('name', '?')} — +{premium:.0f}% above SMA-50"
+                    )
+
+        # --- Deployment opportunities ---
+        if opportunities:
+            lines += ["", "DEPLOYMENT OPPORTUNITIES (pre-computed, cross-referenced with IPS):"]
+            for opp in opportunities:
+                lines.append(
+                    f"  {opp.get('signal', '?')}: {opp.get('name', '?')} ({opp.get('ticker', '?')})"
+                )
+                lines.append(
+                    f"    Bucket: {opp.get('bucket_name', '?')} "
+                    f"(drift {opp.get('bucket_drift_pct', 0):+.1f}pp), "
+                    f"Valuation: {opp.get('valuation', '?')}, "
+                    f"Score: {opp.get('fundamental_score', -1)}/100, "
+                    f"DCA: {opp.get('dca_signal', '?')}"
+                )
+                lines.append(f"    Reason: {opp.get('reason', 'N/A')}")
 
         return "\n".join(lines)

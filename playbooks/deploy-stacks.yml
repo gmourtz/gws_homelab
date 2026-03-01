@@ -11,7 +11,7 @@
 #   ansible-playbook playbooks/deploy-stacks.yml --limit optiplex
 
 - name: Deploy stacks
-  hosts: all
+  hosts: all:!routers
   become: true
   gather_facts: true
 
@@ -49,3 +49,10 @@
         project_src: "{{ stacks_dest }}"
         pull: always
         state: present
+
+    - name: Configure Pi-hole allowlist
+      ansible.builtin.command:
+        cmd: docker exec pihole pihole allow {{ item }}
+      loop: "{{ pihole_allowlist }}"
+      when: pihole_allowlist is defined
+      changed_when: false
