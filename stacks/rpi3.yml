@@ -10,7 +10,7 @@ services:
       WEBPASSWORD: "{{ vault_pihole_password }}"
       PIHOLE_DNS_1: "1.1.1.1"
       PIHOLE_DNS_2: "8.8.8.8"
-      DNSMASQ_LISTENING: all
+      FTLCONF_dns_listeningMode: "all"
       # Pi-hole v6 local DNS — semicolon-separated "ip hostname [alias...]" entries
       # Source of truth: dns_records in inventory/group_vars/all/main.yml
       FTLCONF_dns_hosts: "{% for record in dns_records %}{{ record.ip }} {{ record.name }}.{{ local_domain }}{% if record.aliases is defined %}{% for alias in record.aliases %} {{ alias }}.{{ local_domain }}{% endfor %}{% endif %}{% if not loop.last %};{% endif %}{% endfor %}"
