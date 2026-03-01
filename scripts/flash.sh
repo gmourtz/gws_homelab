@@ -27,13 +27,14 @@ usage() {
     echo "Usage:"
     echo "  $0 list                 Show external/removable disks"
     echo "  $0 download             Download OS images to ./images/"
-    echo "  $0 build-iso            Build autoinstall ISO for OptiPlex"
-    echo "  $0 rpi   /dev/diskN     Flash RPi image to SD card"
-    echo "  $0 optiplex /dev/diskN  Flash autoinstall ISO to USB stick"
+    echo "  $0 build-iso <host>     Build autoinstall ISO (optiplex, openclaw)"
+    echo "  $0 rpi      /dev/diskN   Flash RPi image to SD card"
+    echo "  $0 optiplex /dev/diskN  Flash optiplex autoinstall ISO to USB stick"
+    echo "  $0 openclaw /dev/diskN  Flash openclaw autoinstall ISO to USB stick"
     echo ""
     echo "Workflow:"
     echo "  1. $0 download          # fetch base images"
-    echo "  2. $0 build-iso         # repack OptiPlex ISO with autoinstall"
+    echo "  2. $0 build-iso <host>  # repack ISO with autoinstall (optiplex, openclaw)"
     echo "  3. $0 list              # identify your SD/USB disk"
     echo "  4. $0 rpi /dev/diskN    # flash RPi SD card"
     echo "  5. $0 optiplex /dev/diskN  # flash OptiPlex USB"
@@ -160,18 +161,19 @@ flash_rpi() {
     echo "✅ RPi SD card ready. Insert into Raspberry Pi and boot."
 }
 
-flash_optiplex() {
-    local disk="$1"
+flash_x86() {
+    local host="$1"
+    local disk="$2"
     local rdisk="${disk/disk/rdisk}"
-    local iso="${IMAGE_DIR}/${OPTIPLEX_AUTOINSTALL_ISO}"
+    local iso="${IMAGE_DIR}/${host}-autoinstall.iso"
 
     if [[ ! -f "$iso" ]]; then
         echo "ERROR: Autoinstall ISO not found at ${iso}"
-        echo "Run: $0 download && $0 build-iso"
+        echo "Run: $0 build-iso ${host}"
         exit 1
     fi
 
-    echo "==> Flashing OptiPlex autoinstall ISO to ${disk}..."
+    echo "==> Flashing ${host} autoinstall ISO to ${disk}..."
 
     validate_disk "$disk"
     confirm "$disk"
@@ -189,9 +191,8 @@ flash_optiplex() {
     diskutil eject "$disk"
 
     echo ""
-    echo "✅ OptiPlex USB ready. Plug in, power on, press F12, select USB."
+    echo "✅ ${host} USB ready. Plug in, power on, select USB boot."
     echo "   Install is fully unattended — walk away."
-    echo "   After reboot: ssh gws@192.168.1.150"
 }
 
 # --- Main ---
@@ -201,8 +202,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 case "$1" in
     list)      list_disks ;;
     download)  download_images ;;
-    build-iso) "${SCRIPT_DIR}/build-iso.sh" ;;
+    build-iso) [[ $# -ne 2 ]] && usage; "${SCRIPT_DIR}/build-iso.sh" "$2" ;;
     rpi)       [[ $# -ne 2 ]] && usage; flash_rpi "$2" ;;
-    optiplex)  [[ $# -ne 2 ]] && usage; flash_optiplex "$2" ;;
+    optiplex)  [[ $# -ne 2 ]] && usage; flash_x86 optiplex "$2" ;;
+    openclaw)  [[ $# -ne 2 ]] && usage; flash_x86 openclaw "$2" ;;
     *)         usage ;;
 esac

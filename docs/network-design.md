@@ -92,7 +92,7 @@ Hyperoptic ONT (fibre)
 │  ether1 ── WAN (DHCP from ZTE)   │
 │  ether2 ── rpi3                  │
 │  ether3 ── optiplex              │
-│  ether4 ── openclaw (future)     │
+│  ether4 ── spare                 │
 │  ether5 ── spare                 │
 │  wifi1  ── 2.4 GHz (3 SSIDs)    │
 │  wifi2  ── 5 GHz (2 SSIDs)      │
@@ -104,7 +104,7 @@ Hyperoptic ONT (fibre)
 | ether1 | ZTE LAN port | N/A (WAN) | DHCP client, default route |
 | ether2 | rpi3 | 10 (untagged) | Pi-hole, Beszel agent |
 | ether3 | optiplex | 10 (untagged) | Docker workloads |
-| ether4 | openclaw (future) | 10 (untagged) | Reserved |
+| ether4 | spare | 10 (untagged) | Available |
 | ether5 | spare | 10 (untagged) | Available |
 | wifi1 | 2.4 GHz clients | Tagged trunk | GWS-Home (10), GWS-IoT (20), GWS-Guest (30) |
 | wifi2 | 5 GHz clients | Tagged trunk | GWS-Home (10), GWS-Guest (30) |
@@ -146,7 +146,7 @@ Three VLANs. No separate management VLAN — single admin, not worth the overhea
 | VLAN ID | Name | Subnet | Purpose |
 |---------|------|--------|---------|
 | **10** | Trusted | 192.168.10.0/24 | Servers, workstations, personal devices |
-| **20** | IoT | 192.168.20.0/24 | Camera, light strip — isolated, limited internet |
+| **20** | IoT | 192.168.20.0/24 | openclaw AI agent, IoT devices — isolated, limited internet |
 | **30** | Guest | 192.168.30.0/24 | Guest WiFi — internet only, no LAN access |
 
 ### Why three VLANs (not more, not fewer)
@@ -166,7 +166,7 @@ Three VLANs. No separate management VLAN — single admin, not worth the overhea
 | 192.168.10.1 | MikroTik gateway | Static (router) |
 | 192.168.10.10 | rpi3 | DHCP static lease (MAC: B8:27:EB:7C:73:DB) |
 | 192.168.10.20 | optiplex | DHCP static lease (MAC: 48:4D:7E:EA:8A:E1) |
-| 192.168.10.30 | openclaw (future) | Reserved |
+| 192.168.10.30 | (available) | — |
 | 192.168.10.100–199 | Dynamic clients | DHCP pool |
 
 ### VLAN 20 — IoT (192.168.20.0/24)
@@ -174,6 +174,7 @@ Three VLANs. No separate management VLAN — single admin, not worth the overhea
 | Address | Host | Assignment |
 |---------|------|------------|
 | 192.168.20.1 | MikroTik gateway | Static (router) |
+| 192.168.20.30 | openclaw | DHCP static lease (MAC: 94:E6:F7:E5:2E:32, WiFi) |
 | 192.168.20.100–199 | IoT devices | DHCP pool |
 
 ### VLAN 30 — Guest (192.168.30.0/24)
@@ -299,17 +300,18 @@ The MikroTik firewall uses connection tracking. `ESTABLISHED/RELATED` is accepte
 | 4 | ACCEPT | trusted -> any | Full outbound + IoT management |
 | 5 | ACCEPT | IoT -> Pi-hole:53 (UDP) | DNS resolution via Pi-hole |
 | 6 | ACCEPT | IoT -> Pi-hole:53 (TCP) | DNS resolution via Pi-hole (TCP) |
-| 7 | ACCEPT | IoT -> internet:80,443 | Device cloud connectivity |
-| 8 | ACCEPT | IoT -> internet:123/UDP | NTP for TLS certificate validation |
-| 9 | ACCEPT | guest -> internet (via ether1) | Full outbound for guests |
-| 10 | DROP | (everything else) | Default deny |
+| 7 | ACCEPT | 192.168.20.30 -> optiplex:8090 (TCP) | openclaw -> beszel-hub (monitoring) |
+| 8 | ACCEPT | IoT -> internet:80,443 | Device cloud connectivity |
+| 9 | ACCEPT | IoT -> internet:123/UDP | NTP for TLS certificate validation |
+| 10 | ACCEPT | guest -> internet (via ether1) | Full outbound for guests |
+| 11 | DROP | (everything else) | Default deny |
 
 ### Inter-VLAN policy summary
 
 | From \ To | Trusted | IoT | Guest | Internet |
 |-----------|---------|-----|-------|----------|
 | **Trusted** | — | ACCEPT | DROP | ACCEPT |
-| **IoT** | Pi-hole:53 only | — | DROP | HTTP/HTTPS/NTP only |
+| **IoT** | Pi-hole:53 + openclaw->beszel:8090 | — | DROP | HTTP/HTTPS/NTP only |
 | **Guest** | DROP | DROP | — | ACCEPT |
 
 ### NAT
@@ -344,6 +346,7 @@ local_domain: internal
 dns_records:
   - { name: optiplex, ip: "192.168.10.20", aliases: [beszel, jellyfin] }
   - { name: rpi3,     ip: "192.168.10.10", aliases: [pihole] }
+  - { name: openclaw, ip: "192.168.20.30" }
 ```
 
 These propagate to:
