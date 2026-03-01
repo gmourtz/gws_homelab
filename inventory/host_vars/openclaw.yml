@@ -1,0 +1,6 @@
+---
+# Host vars for openclaw
+# TODO: fill in once hardware is known
+
+# UFW extra rules — ports needed by stacks on this host
+ufw_extra_rules: []
