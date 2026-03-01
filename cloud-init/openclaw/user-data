@@ -1,0 +1,79 @@
+#cloud-config
+# ------------------------------------------------------------------
+# Autoinstall config for Lenovo laptop (openclaw)
+# Ubuntu 24.04 LTS — fully unattended install
+#
+# Install procedure:
+# 1. Replace WIFI_PASSPHRASE_HERE with the actual GWS-IoT passphrase
+# 2. Build ISO:  ./scripts/build-iso.sh openclaw
+# 3. Flash ISO:  ./scripts/flash.sh openclaw /dev/diskN
+# 4. Boot laptop with USB-to-Ethernet adapter plugged into MikroTik ether4/5
+# 5. Autoinstall runs unattended (~5 min) then reboots
+# 6. Unplug Ethernet adapter — laptop connects to GWS-IoT WiFi -> 192.168.20.30
+#
+# The WiFi passphrase is NOT stored in git. Replace it before building.
+# ------------------------------------------------------------------
+
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  timezone: Europe/London
+  keyboard:
+    layout: us
+
+  identity:
+    hostname: openclaw
+    username: gws
+    # Locked password — SSH key only (password auth is disabled via late-commands)
+    password: "$6$homelablocked$YZIe7O7AGvMm8yZ7ddnWARifGT/koTS3r4r1ylqTxl2oR9e8tvgAmw6s1lu2/LpRSm2.kXNlA5F/kenXKlN/l."
+
+  ssh:
+    install-server: true
+    authorized-keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjZb5ELR3VYw8eSNGTf9eAY8kqeA/LuRIhD8X/fzpup gws_homelab
+    allow-pw: false
+
+  storage:
+    layout:
+      name: direct  # Use entire laptop SSD
+
+  # Ethernet DHCP used only during installation.
+  # The laptop must be plugged into MikroTik via USB-to-Ethernet adapter.
+  # After install, WiFi takes over (configured via late-commands below).
+  network:
+    version: 2
+    ethernets:
+      any-eth:
+        match:
+          name: en*
+        dhcp4: true
+
+  packages:
+    - python3
+    - openssh-server
+    - curl
+    - wget
+    - wpasupplicant
+
+  late-commands:
+    # Passwordless sudo for gws
+    - echo 'gws ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/gws
+    - chmod 440 /target/etc/sudoers.d/gws
+    # Disable password auth in SSH
+    - sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /target/etc/ssh/sshd_config
+    - sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /target/etc/ssh/sshd_config
+    # Write WiFi config for GWS-IoT (VLAN 20).
+    # Gets static IP 192.168.20.30 via DHCP lease bound to WiFi MAC 94:e6:f7:e5:2e:32.
+    # IMPORTANT: Replace WIFI_PASSPHRASE_HERE with actual passphrase before building ISO.
+    - |
+      cat > /target/etc/netplan/99-wifi.yaml << 'EOF'
+      network:
+        version: 2
+        wifis:
+          wlp0s20f3:
+            dhcp4: true
+            access-points:
+              "GWS-IoT":
+                password: "l1r01k!i5g0'"
+      EOF
+      chmod 600 /target/etc/netplan/99-wifi.yaml

@@ -18,6 +18,9 @@ ufw_extra_rules:
   - { port: "53", proto: udp, src: "192.168.10.0/24" }
   - { port: "53", proto: tcp, src: "192.168.20.0/24" }
   - { port: "53", proto: udp, src: "192.168.20.0/24" }
+  # Pi-hole DNS — Tailscale clients (subnet routing source IPs)
+  - { port: "53", proto: tcp, src: "100.64.0.0/10" }
+  - { port: "53", proto: udp, src: "100.64.0.0/10" }
   # Pi-hole web UI
   - { port: "80", proto: tcp, src: "192.168.10.0/24" }
   # Beszel agent

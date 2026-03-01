@@ -1,0 +1,35 @@
+services:
+  # --- AI Agent ---
+  openclaw:
+    image: ghcr.io/gmourtz/openclaw:latest
+    container_name: openclaw
+    restart: unless-stopped
+    ports:
+      - "18789:18789"
+    volumes:
+      - openclaw-config:/root/.openclaw
+    healthcheck:
+      test: ["CMD-SHELL", "openclaw health --json || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- Monitoring ---
+  beszel-agent:
+    image: henrygd/beszel-agent:latest
+    container_name: beszel-agent
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      PORT: "45876"
+      KEY: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE4wKKsidPkwxLodNHyivIN+9v+zfdT0DFZXrkDCUWJr"
+    healthcheck:
+      test: ["CMD", "/agent", "health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  openclaw-config:
