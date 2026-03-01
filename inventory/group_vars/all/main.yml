@@ -26,3 +26,22 @@ ghcr_registry: ghcr.io
 
 # Stacks deployment
 stacks_dest: /opt/stacks
+
+# Local domain suffix — used by Pi-hole (FTLCONF_dns_hosts), /etc/hosts, and DHCP search domain
+local_domain: internal
+
+# Local DNS records — served by Pi-hole (FTLCONF_dns_hosts env var) on rpi3
+# Also used to populate /etc/hosts on all hosts
+# Format: { name: "<hostname>", ip: "<ip>", aliases: ["<alias1>", ...] }
+# - name: the primary hostname (typically the inventory hostname)
+# - aliases: optional service names that resolve to the same IP
+dns_records:
+  - { name: optiplex, ip: "192.168.10.20", aliases: [beszel, jellyfin] }
+  - { name: rpi3,     ip: "192.168.10.10", aliases: [pihole] }
+
+# Services proxied by Caddy on optiplex (port 80, routed by Host header)
+# - name: DNS alias (must exist in dns_records aliases)
+# - upstream: container_name:port (resolved via Docker Compose DNS)
+proxy_services:
+  - { name: beszel, upstream: "beszel-hub:8090" }
+  - { name: jellyfin, upstream: "jellyfin:8096" }

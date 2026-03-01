@@ -3,7 +3,6 @@
 All agent behaviour is driven by this config.  The LLM does not decide
 what actions to take — the IPS does.
 """
-
 from __future__ import annotations
 
 import logging

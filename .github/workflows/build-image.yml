@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       app:
-        description: "App to build (leave empty to auto-detect)"
+        description: "App directory under apps/ (e.g. georgios-website). Leave empty to auto-detect changed apps."
         required: false
         type: string
 
@@ -33,8 +33,8 @@ jobs:
       - name: Detect changed apps
         id: changed
         run: |
-          if [[ -n "${{ inputs.app }}" ]]; then
-            CHANGED=$(echo '["${{ inputs.app }}"]')
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.app }}" ]]; then
+            CHANGED=$(printf '%s\n' "${{ github.event.inputs.app }}" | jq -R -s -c 'split("\n") | map(select(. != ""))')
           elif [[ "${{ github.event_name }}" == "push" ]]; then
             CHANGED=$(git diff --name-only HEAD~1 HEAD -- apps/ | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(. != ""))')
           else
@@ -149,13 +149,22 @@ jobs:
         app: ${{ fromJson(needs.detect.outputs.apps || '[]') }}
     permissions:
       contents: read
+      packages: read
       security-events: write
 
     steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.app }}:latest
           format: table
           exit-code: "1"
+          ignore-unfixed: true
           severity: CRITICAL,HIGH

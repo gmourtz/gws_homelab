@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>George Mourtzinos | Data & AI Consultant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --primary: #58a6ff;
+      --text: #c9d1d9;
+      --text-bright: #f0f6fc;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --max-width: 780px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 4rem 1.5rem 2rem;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .profile-photo {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+    }
+
+    .header-info h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+      color: var(--text-bright);
+    }
+
+    .header-info p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
+    }
+
+    .header-links {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .header-links a {
+      color: var(--text-secondary);
+      font-size: 1.25rem;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .header-links a:hover { color: var(--text-bright); }
+
+    main {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 1.5rem 4rem;
+    }
+
+    section {
+      padding: 2rem 0;
+      border-top: 1px solid var(--border);
+    }
+
+    section:first-child { border-top: none; }
+
+    h2 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+
+    section p {
+      font-size: 0.95rem;
+      color: var(--text);
+      line-height: 1.8;
+    }
+
+    section p + p {
+      margin-top: 0.75rem;
+    }
+
+    #skills ul {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    #skills li {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    #certifications ul {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    #certifications li {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .cert-logo {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    #contact p {
+      font-size: 0.95rem;
+      margin-bottom: 0.4rem;
+    }
+
+    #contact a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    #contact a:hover { text-decoration: underline; }
+
+    footer {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 600px) {
+      header { padding-top: 2.5rem; }
+      .header-info h1 { font-size: 1.25rem; }
+      .profile-photo { width: 64px; height: 64px; }
+    }
+
+    @media (min-width: 601px) {
+      #certifications ul { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-row">
+      <img src="media/Photo profile.png" alt="George Mourtzinos Profile Photo" class="profile-photo">
+      <div class="header-info">
+        <h1>George Mourtzinos</h1>
+        <p>Data & AI Consultant | Cloud-Native Architect | Business Value-Driven Builder</p>
+      </div>
+    </div>
+    <div class="header-links">
+      <a href="mailto:gmourtzinos@icloud.com" aria-label="Email"><i class="fas fa-envelope"></i></a>
+      <a href="https://www.linkedin.com/in/georgemourtzinos" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+      <a href="https://github.com/gmourtz" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+    </div>
+  </header>
+
+  <main>
+    <section id="about">
+      <h2>About</h2>
+      <p>Hi, I'm George — a results-driven Data & AI Engineer with a passion for building scalable data infrastructure that powers insights and drives business value.</p>
+      <p>I specialise in designing end-to-end data pipelines across cloud-native platforms like AWS, Snowflake, and Azure, enabling data scientists and analysts to make informed decisions faster.</p>
+      <p>I bring strong problem-solving skills, strategic thinking, and technical leadership, with experience mentoring teams and driving high-impact projects that save costs and boost performance.</p>
+      <p>I'm continuously learning and evolving—always exploring the latest tools, frameworks, and methodologies in the data space.</p>
+    </section>
+
+    <!-- <section id="projects">
+      <h2>Projects</h2>
+      <ul>
+        <li><strong>Private Equity</strong> – Designed and deployed ELT pipelines to process over 1 billion LinkedIn profiles. Delivered portfolio company analytics and internal talent search capabilities.</li>
+        <li><strong>Insurance</strong> – Built a real-time transformation framework in Snowflake/dbt. Delivered 30% faster development cycles and £500k+ in value through MDM optimisations.</li>
+        <li><strong>Financial Services</strong> – Led a team of engineers to implement cost-efficient data pipelines, reducing query time by 23% and improving stakeholder reporting workflows.</li>
+        <li><strong>Renewable Energy</strong> – Managed 114 MWp solar assets and developed analytics that boosted revenue by 12%.</li>
+        <li><strong>Energy Infrastructure</strong> – Modeled power systems for critical energy infrastructure projects, improving system performance by 6%.</li>
+      </ul>
+    </section> -->
+
+    <section id="skills">
+      <h2>Skills</h2>
+      <ul>
+        <li>SQL</li>
+        <li>Python</li>
+        <li>Cypher</li>
+        <li>Snowflake</li>
+        <li>AWS</li>
+        <li>dbt</li>
+        <li>Databricks</li>
+        <li>Meltano</li>
+        <li>Matillion</li>
+        <li>Terraform</li>
+        <li>PowerBI</li>
+        <li>Git</li>
+        <li>Docker</li>
+        <li>Airflow</li>
+        <li>ELT / ETL</li>
+        <li>Platform Design</li>
+        <li>CI/CD</li>
+        <li>IaC</li>
+        <li>Data Quality</li>
+        <li>Data Governance</li>
+        <li>Mentorship</li>
+        <li>Stakeholder Management</li>
+        <li>Agile</li>
+        <li>Project Delivery</li>
+      </ul>
+    </section>
+
+    <section id="certifications">
+      <h2>Certifications</h2>
+      <ul>
+        <li><img class="cert-logo" src="media/Snowflake SnowPro® Advanced Data Engineer.png" alt="Snowflake SnowPro Advanced Data Engineer Badge" />Snowflake SnowPro® Advanced: Data Engineer</li>
+        <li><img class="cert-logo" src="media/Snowflake SnowPro® Core.png" alt="Snowflake SnowPro Core Badge" />Snowflake SnowPro® Core</li>
+        <li><img class="cert-logo" src="media/ Databricks Data Engineer Associate.png" alt="Databricks Data Engineer Associate Badge" />Databricks Data Engineer Associate</li>
+        <li><img class="cert-logo" src="media/ AWS Cloud Practitioner.png" alt="AWS Cloud Practitioner Badge" />AWS Cloud Practitioner</li>
+        <li><img class="cert-logo" src="media/Databricks Lakehouse Fundamentals.png" alt="Databricks Lakehouse Fundamentals Badge" />Databricks Lakehouse Fundamentals</li>
+        <li><img class="cert-logo" src="media/Professional Scrum Master I.png" alt="Professional Scrum Master I Badge" />Professional Scrum Master I</li>
+        <li><img class="cert-logo" src="media/dbt fundamentals.png" alt="dbt Fundamentals Badge" />dbt Fundamentals</li>
+        <li><img class="cert-logo" src="media/DataOps.live Fundamentals.webp" alt="DataOps.live Fundamentals Badge" />DataOps.live Fundamentals</li>
+        <li><img class="cert-logo" src="media/APM Project Fundamentals Qualification (PFQ).webp" alt="APM Project Fundamentals Qualification (PFQ) Badge" />APM Project Fundamentals Qualification (PFQ)</li>
+      </ul>
+    </section>
+
+    <section id="contact">
+      <h2>Contact</h2>
+      <p>Email: <a href="mailto:gmourtzinos@icloud.com">gmourtzinos@icloud.com</a></p>
+      <p>LinkedIn: <a href="https://www.linkedin.com/in/georgemourtzinos/" target="_blank">linkedin.com/in/georgemourtzinos</a></p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 George Mourtzinos</p>
+  </footer>
+  <!-- Cal floating-popup embed code begins -->
+  <script type="text/javascript">
+  (function (C, A, L) { let p = function (a, ar) { a.q.push(ar); }; let d = C.document; C.Cal = C.Cal || function () { let cal = C.Cal; let ar = arguments; if (!cal.loaded) { cal.ns = {}; cal.q = cal.q || []; d.head.appendChild(d.createElement("script")).src = A; cal.loaded = true; } if (ar[0] === L) { const api = function () { p(api, arguments); }; const namespace = ar[1]; api.q = api.q || []; if(typeof namespace === "string"){cal.ns[namespace] = cal.ns[namespace] || api;p(cal.ns[namespace], ar);p(cal, ["initNamespace", namespace]);} else p(cal, ar); return;} p(cal, ar); }; })(window, "https://app.cal.com/embed/embed.js", "init");
+Cal("init", "30min", {origin:"https://app.cal.com"});
+
+  Cal.ns["30min"]("floatingButton", {"calLink":"george-mourtzinos/30min","config":{"layout":"month_view"},"buttonColor":"#e6edf3","buttonTextColor":"#0d1117"}); 
+  Cal.ns["30min"]("ui", {"hideEventTypeDetails":false,"layout":"month_view","cssVarsPerTheme":{"light":{"cal-brand":"#e6edf3"}}});
+  </script>
+  <!-- Cal floating-popup embed code ends -->
+</body>
+</html>
