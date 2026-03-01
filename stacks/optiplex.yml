@@ -1,7 +1,7 @@
 configs:
   caddyfile:
     content: |
-      # Reverse proxy — auto-generated from proxy_services variable
+      # HTTP reverse proxy — auto-generated from proxy_services variable
 {% for svc in proxy_services %}
       http://{{ svc.name }}.{{ local_domain }} {
         reverse_proxy {{ svc.upstream }}

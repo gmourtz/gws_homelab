@@ -5,3 +5,7 @@
 ufw_extra_rules:
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }   # Beszel agent
   - { port: "18789", proto: tcp, src: "192.168.10.0/24" }   # OpenClaw gateway
+
+# Tailscale — advertise IoT subnet so remote clients can reach 192.168.20.0/24
+tailscale_advertise_routes:
+  - 192.168.20.0/24

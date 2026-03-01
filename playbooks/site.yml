@@ -245,7 +245,7 @@
 
     - name: Connect Tailscale
       ansible.builtin.command: >-
-        nice -n 19 tailscale up --authkey={{ vault_tailscale_authkey }}
+        nice -n 19 tailscale up --authkey={{ vault_tailscale_authkey }} --accept-dns=false
         {% if tailscale_advertise_routes is defined %}
         --advertise-routes={{ tailscale_advertise_routes | join(',') }}
         {% endif %}
@@ -253,6 +253,15 @@
         - vault_tailscale_authkey is defined
         - (ts_status.stdout | from_json).BackendState | default('') != 'Running'
       no_log: true
+      tags: [tailscale-connect]
+
+    - name: Update Tailscale advertised routes
+      ansible.builtin.command: >-
+        tailscale set
+        --advertise-routes={{ tailscale_advertise_routes | join(',') }}
+      when:
+        - tailscale_advertise_routes is defined
+        - (ts_status.stdout | from_json).BackendState | default('') == 'Running'
       tags: [tailscale-connect]
 
   handlers:
