@@ -13,10 +13,12 @@ pihole_allowlist:
 
 # UFW extra rules — ports needed by stacks on this host
 ufw_extra_rules:
-  # Pi-hole DNS
-  - { port: "53", proto: tcp, src: "192.168.1.0/24" }
-  - { port: "53", proto: udp, src: "192.168.1.0/24" }
+  # Pi-hole DNS (trusted + IoT VLANs — IoT is allowed through MikroTik firewall)
+  - { port: "53", proto: tcp, src: "192.168.10.0/24" }
+  - { port: "53", proto: udp, src: "192.168.10.0/24" }
+  - { port: "53", proto: tcp, src: "192.168.20.0/24" }
+  - { port: "53", proto: udp, src: "192.168.20.0/24" }
   # Pi-hole web UI
-  - { port: "80", proto: tcp, src: "192.168.1.0/24" }
+  - { port: "80", proto: tcp, src: "192.168.10.0/24" }
   # Beszel agent
-  - { port: "45876", proto: tcp, src: "192.168.1.0/24" }
+  - { port: "45876", proto: tcp, src: "192.168.10.0/24" }

@@ -12,7 +12,7 @@
 #   ansible-playbook playbooks/site.yml --limit rpi3
 
 - name: Configure homelab
-  hosts: all
+  hosts: all:!routers
   become: true
   gather_facts: true
 
@@ -56,7 +56,7 @@
       ansible.builtin.lineinfile:
         path: /etc/hosts
         regexp: ".*# homelab: {{ item.name }}$"
-        line: "{{ item.ip }}  {{ item.name }} {{ (item.aliases | default([])) | join(' ') }}  # homelab: {{ item.name }}"
+        line: "{{ item.ip }}  {{ item.name }}.{{ local_domain }} {{ item.name }} {{ item.aliases | default([]) | map('regex_replace', '^(.*)$', '\\1.' ~ local_domain ~ ' \\1') | join(' ') }}  # homelab: {{ item.name }}"
         state: present
       loop: "{{ dns_records | default([]) }}"
       loop_control:
@@ -74,22 +74,28 @@
       notify: Restart SSH
 
     # --- Firewall ---
-    - name: UFW — deny incoming, allow outgoing, allow SSH
+    - name: UFW — reset to clean state
       community.general.ufw:
-        rule: "{{ item.rule | default(omit) }}"
-        direction: "{{ item.direction | default(omit) }}"
-        default: "{{ item.default | default(omit) }}"
-        port: "{{ item.port | default(omit) }}"
-        proto: "{{ item.proto | default(omit) }}"
-        state: "{{ item.state | default(omit) }}"
+        state: reset
+
+    - name: UFW — set default policies
+      community.general.ufw:
+        direction: "{{ item.direction }}"
+        default: "{{ item.default }}"
       loop:
         - { direction: incoming, default: deny }
         - { direction: outgoing, default: allow }
-        - { rule: allow, port: "22", proto: tcp }
-        - { rule: allow, port: "41641", proto: udp }
-        - { state: enabled }
 
-    - name: UFW — allow additional ports
+    - name: UFW — allow base ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: "{{ item.proto }}"
+      loop:
+        - { port: "22", proto: tcp }
+        - { port: "41641", proto: udp }
+
+    - name: UFW — allow host-specific ports
       community.general.ufw:
         rule: allow
         port: "{{ item.port }}"
@@ -98,6 +104,10 @@
       loop: "{{ ufw_extra_rules | default([]) }}"
       loop_control:
         label: "{{ item.port }}"
+
+    - name: UFW — enable
+      community.general.ufw:
+        state: enabled
 
     # --- Fail2ban ---
     - name: Configure fail2ban for SSH
