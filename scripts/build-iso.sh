@@ -3,25 +3,35 @@
 # build-iso.sh — Repack Ubuntu Server ISO with autoinstall config
 #
 # Takes the stock Ubuntu Server ISO and embeds the autoinstall
-# user-data so the OptiPlex installs fully unattended.
+# user-data so the target host installs fully unattended.
 #
 # Usage:
-#   ./scripts/build-iso.sh
+#   ./scripts/build-iso.sh <host>
+#
+#   ./scripts/build-iso.sh optiplex    # -> images/optiplex-autoinstall.iso
+#   ./scripts/build-iso.sh openclaw    # -> images/openclaw-autoinstall.iso
 #
 # Prerequisites (macOS):
 #   brew install xorriso
 #
 # Output:
-#   images/optiplex-autoinstall.iso
+#   images/<host>-autoinstall.iso
 # ------------------------------------------------------------------
 set -euo pipefail
 
+if [[ $# -lt 1 ]]; then
+    echo "Usage: $0 <host>  (e.g. optiplex, openclaw)"
+    exit 1
+fi
+
+HOST="$1"
+
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE_DIR="${PROJECT_DIR}/images"
-CLOUD_INIT_DIR="${PROJECT_DIR}/cloud-init/optiplex"
+CLOUD_INIT_DIR="${PROJECT_DIR}/cloud-init/${HOST}"
 WORK_DIR="${IMAGE_DIR}/.build-iso"
 SOURCE_ISO="${IMAGE_DIR}/ubuntu-24.04.4-live-server-amd64.iso"
-OUTPUT_ISO="${IMAGE_DIR}/optiplex-autoinstall.iso"
+OUTPUT_ISO="${IMAGE_DIR}/${HOST}-autoinstall.iso"
 
 # --- Preflight checks ---
 check_deps() {
@@ -87,7 +97,7 @@ PYEOF
 }
 
 # --- Main ---
-echo "==> Building autoinstall ISO for OptiPlex..."
+echo "==> Building autoinstall ISO for ${HOST}..."
 check_deps
 check_source_iso
 check_user_data
@@ -188,4 +198,4 @@ echo ""
 echo "✅ Autoinstall ISO built: ${OUTPUT_ISO} (${ISO_SIZE})"
 echo ""
 echo "Flash it with:"
-echo "  ./scripts/flash.sh optiplex /dev/diskN"
+echo "  ./scripts/flash.sh ${HOST} /dev/diskN"

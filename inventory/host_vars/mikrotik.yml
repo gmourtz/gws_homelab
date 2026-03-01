@@ -70,6 +70,11 @@ dhcp_static_leases:
     ip_address: 192.168.10.20
     server: dhcp-trusted
 
+  - comment: openclaw
+    mac_address: "94:E6:F7:E5:2E:32"
+    ip_address: 192.168.20.30
+    server: dhcp-iot
+
 # ---------------------------------------------------------------------------
 # WiFi SSIDs
 # ---------------------------------------------------------------------------
@@ -169,6 +174,16 @@ firewall_filter_rules:
     dst-address: 192.168.10.10
     protocol: tcp
     dst-port: "53"
+    in-interface: bridge1.20
+
+  # OpenClaw -> Beszel hub (monitoring agent reports)
+  - chain: forward
+    action: accept
+    comment: "openclaw -> beszel-hub on optiplex"
+    src-address: 192.168.20.30
+    dst-address: 192.168.10.20
+    protocol: tcp
+    dst-port: "8090"
     in-interface: bridge1.20
 
   # IoT -> internet HTTP/HTTPS

@@ -245,11 +245,15 @@
 
     - name: Connect Tailscale
       ansible.builtin.command: >-
-        tailscale up --authkey={{ vault_tailscale_authkey }} --accept-routes
+        nice -n 19 tailscale up --authkey={{ vault_tailscale_authkey }}
+        {% if tailscale_advertise_routes is defined %}
+        --advertise-routes={{ tailscale_advertise_routes | join(',') }}
+        {% endif %}
       when:
         - vault_tailscale_authkey is defined
         - (ts_status.stdout | from_json).BackendState | default('') != 'Running'
       no_log: true
+      tags: [tailscale-connect]
 
   handlers:
     - name: Restart SSH
