@@ -11,7 +11,7 @@
 #   ansible-playbook playbooks/deploy-stacks.yml --limit optiplex
 
 - name: Deploy stacks
-  hosts: all
+  hosts: all:!routers
   become: true
   gather_facts: true
 

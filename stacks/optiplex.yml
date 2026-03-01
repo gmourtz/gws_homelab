@@ -1,4 +1,33 @@
+configs:
+  caddyfile:
+    content: |
+      # Reverse proxy — auto-generated from proxy_services variable
+{% for svc in proxy_services %}
+      http://{{ svc.name }}.{{ local_domain }} {
+        reverse_proxy {{ svc.upstream }}
+      }
+{% endfor %}
+
 services:
+  # --- Reverse proxy ---
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    networks:
+      - beszel-net
+      - jellyfin-net
+    ports:
+      - "80:80"
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # --- Monitoring ---
   beszel-agent:
     image: henrygd/beszel-agent:latest
@@ -22,8 +51,6 @@ services:
     restart: unless-stopped
     networks:
       - beszel-net
-    ports:
-      - "8090:8090"
     volumes:
       - beszel-data:/beszel_data
     healthcheck:
@@ -146,8 +173,6 @@ services:
     restart: unless-stopped
     networks:
       - jellyfin-net
-    ports:
-      - "8096:8096"
     volumes:
       - jellyfin-config:/config
       - /mnt/media/videos:/media/videos:ro

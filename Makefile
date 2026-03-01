@@ -1,6 +1,6 @@
 # GWS Homelab
 
-.PHONY: help setup ping deploy stacks vault
+.PHONY: help setup ping deploy stacks vault routeros
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -11,7 +11,7 @@ setup: ## Install Ansible + dependencies
 	ansible-galaxy install -r requirements.yml
 
 ping: ## Test SSH to all hosts
-	ansible all -m ping
+	ansible all:!routers -m ping
 
 deploy: ## Apply full configuration
 	ansible-playbook playbooks/site.yml
@@ -21,6 +21,9 @@ stacks: ## Deploy Docker Compose stacks to hosts
 
 vault: ## Edit encrypted vault secrets
 	ansible-vault edit inventory/group_vars/all/vault.yml
+
+routeros: ## Configure MikroTik RouterOS
+	ansible-playbook playbooks/configure-routeros.yml
 
 test: ## Run unit tests for all apps
 	@for dir in apps/*/; do \

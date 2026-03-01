@@ -11,12 +11,11 @@ services:
       PIHOLE_DNS_1: "1.1.1.1"
       PIHOLE_DNS_2: "8.8.8.8"
       DNSMASQ_LISTENING: all
+      # Pi-hole v6 local DNS — semicolon-separated "ip hostname [alias...]" entries
+      # Source of truth: dns_records in inventory/group_vars/all/main.yml
+      FTLCONF_dns_hosts: "{% for record in dns_records %}{{ record.ip }} {{ record.name }}.{{ local_domain }}{% if record.aliases is defined %}{% for alias in record.aliases %} {{ alias }}.{{ local_domain }}{% endfor %}{% endif %}{% if not loop.last %};{% endif %}{% endfor %}"
     volumes:
       - pihole-data:/etc/pihole
-      - pihole-dnsmasq:/etc/dnsmasq.d
-    configs:
-      - source: local-dns
-        target: /etc/dnsmasq.d/02-local-dns.conf
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost/admin/ || exit 1"]
       interval: 30s
@@ -40,15 +39,5 @@ services:
       timeout: 5s
       retries: 3
 
-configs:
-  local-dns:
-    content: |
-      # Homelab local DNS — auto-generated from dns_records variable
-      # To add entries, edit dns_records in inventory/group_vars/all/main.yml
-{% for record in dns_records %}
-      address=/{{ record.name }}.home/{{ record.name }}{% if record.aliases is defined %}{% for alias in record.aliases %}/{{ alias }}.home/{{ alias }}{% endfor %}{% endif %}/{{ record.ip }}
-{% endfor %}
-
 volumes:
   pihole-data:
-  pihole-dnsmasq:
