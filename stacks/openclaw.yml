@@ -1,18 +1,22 @@
 services:
   # --- AI Agent ---
   openclaw:
-    image: ghcr.io/gmourtz/openclaw:latest
+    image: ghcr.io/openclaw/openclaw:main
     container_name: openclaw
     restart: unless-stopped
     ports:
       - "18789:18789"
     volumes:
-      - openclaw-config:/root/.openclaw
+      # Official image runs as node user (uid 1000) — config lives in /home/node/.openclaw
+      - openclaw-config:/home/node/.openclaw
+    mem_limit: 4g
+    cpus: "2.0"
     healthcheck:
       test: ["CMD-SHELL", "openclaw health --json || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 60s
 
   # --- Monitoring ---
   beszel-agent:
