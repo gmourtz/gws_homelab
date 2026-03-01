@@ -17,9 +17,7 @@ data_dirs:
 # UFW extra rules — ports needed by stacks on this host
 ufw_extra_rules:
   # Beszel agent (LAN + Docker bridge so hub can reach agent on same host)
-  - { port: "45876", proto: tcp, src: "192.168.1.0/24" }
+  - { port: "45876", proto: tcp, src: "192.168.10.0/24" }
   - { port: "45876", proto: tcp, src: "172.16.0.0/12" }
-  # Beszel hub web UI
-  - { port: "8090", proto: tcp, src: "192.168.1.0/24" }
-  # Jellyfin web UI
-  - { port: "8096", proto: tcp, src: "192.168.1.0/24" }
+  # Caddy reverse proxy (serves beszel, jellyfin, etc.)
+  - { port: "80", proto: tcp, src: "192.168.10.0/24" }
