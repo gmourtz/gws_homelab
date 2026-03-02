@@ -264,6 +264,15 @@
         - (ts_status.stdout | from_json).BackendState | default('') == 'Running'
       tags: [tailscale-connect]
 
+    - name: Configure Tailscale serve (HTTPS proxy for gateway UI)
+      ansible.builtin.command: >-
+        tailscale serve https / http://localhost:{{ tailscale_serve_port }}
+      when:
+        - tailscale_serve_port is defined
+        - (ts_status.stdout | from_json).BackendState | default('') == 'Running'
+      changed_when: false
+      tags: [tailscale-connect]
+
   handlers:
     - name: Restart SSH
       ansible.builtin.systemd:

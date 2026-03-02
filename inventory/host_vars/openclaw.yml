@@ -9,3 +9,6 @@ ufw_extra_rules:
 # Tailscale — advertise IoT subnet so remote clients can reach 192.168.20.0/24
 tailscale_advertise_routes:
   - 192.168.20.0/24
+
+# Tailscale serve — expose OpenClaw gateway over HTTPS on Tailscale interface
+tailscale_serve_port: 18789
