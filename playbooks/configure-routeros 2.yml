@@ -437,28 +437,6 @@
           {{ result }}
 
     # -----------------------------------------------------------------------
-    # 19d. Clear default SSID from master WiFi interfaces
-    #
-    # Factory defaults leave wifi1/wifi2 broadcasting "MikroTik-XXXXXX".
-    # Remove their configuration profile so only the virtual APs below are
-    # active.  The physical interfaces stay enabled (required by virtual APs).
-    # -----------------------------------------------------------------------
-    - name: Get master WiFi interface IDs
-      community.routeros.api:
-        path: interface wifi
-        query: ".id name"
-      register: wifi_interfaces
-
-    - name: Clear default SSID from master WiFi interfaces
-      community.routeros.api:
-        path: interface wifi
-        cmd: "unset .id={{ item['.id'] }} value-name=configuration"
-      loop: "{{ wifi_interfaces.msg | selectattr('name', 'in', ['wifi1', 'wifi2']) | list }}"
-      loop_control:
-        label: "{{ item.name }}"
-      changed_when: false
-
-    # -----------------------------------------------------------------------
     # 20. WiFi virtual APs — all bands (2.4 GHz wifi1 + 5 GHz wifi2)
     # -----------------------------------------------------------------------
     # NOTE: Do NOT use handle_absent_entries: remove or ensure_order here.

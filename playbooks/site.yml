@@ -264,14 +264,20 @@
         - (ts_status.stdout | from_json).BackendState | default('') == 'Running'
       tags: [tailscale-connect]
 
+    - name: Check Tailscale serve status
+      ansible.builtin.command: tailscale serve status
+      register: ts_serve_status
+      changed_when: false
+      failed_when: false
+      become: false
+      when: tailscale_serve_port is defined
+
     - name: Configure Tailscale serve (HTTPS proxy for gateway UI)
-      ansible.builtin.command: >-
-        tailscale serve https / http://localhost:{{ tailscale_serve_port }}
+      ansible.builtin.command: tailscale serve --bg --yes localhost:{{ tailscale_serve_port }}
       when:
         - tailscale_serve_port is defined
         - (ts_status.stdout | from_json).BackendState | default('') == 'Running'
-      changed_when: false
-      tags: [tailscale-connect]
+        - "'No serve config' in (ts_serve_status.stdout | default(''))"
 
   handlers:
     - name: Restart SSH

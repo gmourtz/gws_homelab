@@ -1,0 +1,43 @@
+{
+  "agents": {
+    "defaults": {
+      "model": { "primary": "openai/gpt-4o" },
+      "models": { "openai/gpt-4o": {} },
+      "compaction": { "mode": "safeguard" }
+    }
+  },
+  "commands": { "native": "auto", "nativeSkills": "auto", "restart": true, "ownerDisplay": "raw" },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "dmPolicy": "allowlist",
+      "botToken": "{{ vault_openclaw_telegram_token }}",
+      "allowFrom": [{{ vault_telegram_chat_id }}],
+      "groupPolicy": "allowlist",
+      "streaming": "off"
+    }
+  },
+  "gateway": {
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": [
+        "https://{{ tailscale_fqdn }}",
+        "http://{{ ansible_host }}:{{ tailscale_serve_port }}"
+      ]
+    },
+    "auth": {
+      "mode": "token",
+      "token": "{{ vault_openclaw_gateway_token }}",
+      "rateLimit": {
+        "maxAttempts": 10,
+        "windowMs": 60000,
+        "lockoutMs": 300000
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "telegram": { "enabled": true }
+    }
+  }
+}

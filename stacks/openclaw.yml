@@ -1,5 +1,7 @@
 services:
   # --- AI Agent ---
+  # Config (openclaw.json) is templated by Ansible into the named volume
+  # — see stacks/openclaw.json.j2 and deploy-stacks.yml
   openclaw:
     image: ghcr.io/openclaw/openclaw:main
     container_name: openclaw
@@ -7,8 +9,9 @@ services:
     ports:
       - "18789:18789"
     volumes:
-      # Official image runs as node user (uid 1000) — config lives in /home/node/.openclaw
-      - openclaw-config:/home/node/.openclaw
+      - openclaw-data:/home/node/.openclaw
+    environment:
+      OPENAI_API_KEY: "{{ vault_openclaw_openai_api_key }}"
     mem_limit: 7g
     cpus: "2.0"
     healthcheck:
@@ -36,4 +39,4 @@ services:
       retries: 3
 
 volumes:
-  openclaw-config:
+  openclaw-data:
