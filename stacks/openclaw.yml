@@ -22,16 +22,35 @@ services:
       start_period: 60s
 
   # --- Monitoring ---
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: docker-socket-proxy
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      NETWORKS: 1
+      VOLUMES: 1
+      INFO: 1
+    ports:
+      - "127.0.0.1:2375:2375"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2375/_ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   beszel-agent:
     image: henrygd/beszel-agent:latest
     container_name: beszel-agent
     restart: unless-stopped
     network_mode: host
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       PORT: "45876"
       KEY: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE4wKKsidPkwxLodNHyivIN+9v+zfdT0DFZXrkDCUWJr"
+      DOCKER_HOST: "tcp://127.0.0.1:2375"
     healthcheck:
       test: ["CMD", "/agent", "health"]
       interval: 30s
