@@ -83,7 +83,7 @@ wifi_ssids:
     vlan_id: 10
     band_2ghz: true
     band_5ghz: true
-    security_mode: wpa2-psk
+    security_mode: wpa3-psk
     vault_passphrase_var: vault_wifi_passphrase_home
 
   - ssid: GWS-IoT
