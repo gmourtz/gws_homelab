@@ -14,6 +14,10 @@ data_dirs:
   - music
   - youtube                  # token.json + client_secret.json live here
 
+# Host-specific packages (extends group_vars packages list)
+extra_packages:
+  - intel-opencl-icd  # Intel GPU OpenCL runtime — enables HDR tone-mapping in Jellyfin QSV transcoding
+
 # UFW extra rules — ports needed by stacks on this host
 ufw_extra_rules:
   # Beszel agent (LAN + Docker bridge so hub can reach agent on same host)

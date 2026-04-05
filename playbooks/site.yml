@@ -20,7 +20,7 @@
     # --- Packages ---
     - name: Update apt & install packages
       ansible.builtin.apt:
-        name: "{{ packages }}"
+        name: "{{ packages + (extra_packages | default([])) }}"
         state: present
         update_cache: true
         cache_valid_time: 3600

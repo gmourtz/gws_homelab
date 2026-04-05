@@ -192,10 +192,15 @@ services:
     image: jellyfin/jellyfin:latest
     container_name: jellyfin
     restart: unless-stopped
+    group_add:
+      - "993"  # render group GID on optiplex — access /dev/dri/renderD128 for Intel Quick Sync
     networks:
       - jellyfin-net
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
     volumes:
       - jellyfin-config:/config
+      - jellyfin-cache:/cache
       - /mnt/media/videos:/media/videos:ro
       - /mnt/media/music:/media/music:ro
     healthcheck:
@@ -221,5 +226,6 @@ networks:
 volumes:
   beszel-data:
   jellyfin-config:
+  jellyfin-cache:
   portfolio-data:
 
