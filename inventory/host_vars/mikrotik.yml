@@ -56,6 +56,18 @@ vlans:
       - 1.1.1.1
       - 9.9.9.9
 
+  - id: 40
+    name: agent
+    subnet: 192.168.40.0/24
+    gateway: 192.168.40.1
+    dhcp_pool_name: pool-agent
+    dhcp_range_start: 192.168.40.100
+    dhcp_range_end: 192.168.40.199
+    dns_servers:
+      - 192.168.10.10   # Pi-hole
+      - 1.1.1.1
+    domain: internal
+
 # ---------------------------------------------------------------------------
 # DHCP static leases
 # ---------------------------------------------------------------------------
@@ -72,33 +84,41 @@ dhcp_static_leases:
 
   - comment: openclaw
     mac_address: "94:E6:F7:E5:2E:32"
-    ip_address: 192.168.20.30
-    server: dhcp-iot
+    ip_address: 192.168.40.30
+    server: dhcp-agent
 
 # ---------------------------------------------------------------------------
 # WiFi SSIDs
 # ---------------------------------------------------------------------------
 wifi_ssids:
-  - ssid: GWS-Home
+  - ssid: gws_home
     vlan_id: 10
     band_2ghz: true
     band_5ghz: true
     security_mode: wpa3-psk
     vault_passphrase_var: vault_wifi_passphrase_home
 
-  - ssid: GWS-IoT
+  - ssid: gws_iot
     vlan_id: 20
     band_2ghz: true
     band_5ghz: false
     security_mode: wpa2-psk
+    client_isolation: true
     vault_passphrase_var: vault_wifi_passphrase_iot
 
-  - ssid: GWS-Guest
+  - ssid: gws_guest
     vlan_id: 30
     band_2ghz: true
     band_5ghz: true
     security_mode: wpa2-psk
     vault_passphrase_var: vault_wifi_passphrase_guest
+
+  - ssid: gws_agent
+    vlan_id: 40
+    band_2ghz: true
+    band_5ghz: false
+    security_mode: wpa2-psk
+    vault_passphrase_var: vault_wifi_passphrase_agent
 
 # ---------------------------------------------------------------------------
 # Firewall filter rules (ordered — applied exactly as listed)
@@ -117,9 +137,9 @@ firewall_filter_rules:
 
   - chain: input
     action: accept
-    comment: "accept ICMP to router (LAN only)"
+    comment: "accept ICMP to router (trusted VLAN only)"
     protocol: icmp
-    in-interface: "!ether1"
+    in-interface: bridge1.10
 
   - chain: input
     action: accept
@@ -176,16 +196,6 @@ firewall_filter_rules:
     dst-port: "53"
     in-interface: bridge1.20
 
-  # OpenClaw -> Beszel hub (monitoring agent reports)
-  - chain: forward
-    action: accept
-    comment: "openclaw -> beszel-hub on optiplex"
-    src-address: 192.168.20.30
-    dst-address: 192.168.10.20
-    protocol: tcp
-    dst-port: "8090"
-    in-interface: bridge1.20
-
   # IoT -> internet HTTP/HTTPS
   - chain: forward
     action: accept
@@ -206,6 +216,60 @@ firewall_filter_rules:
     dst-port: "123"
     in-interface: bridge1.20
 
+  # TODO: add device-specific ports as needed, e.g.:
+  #   RTSP streaming:       tcp dst-port 554
+  #   ONVIF discovery:      tcp dst-port 8080
+  #   Some cloud cameras:   udp dst-port 6000-7000
+
+  # Agent -> Pi-hole DNS
+  - chain: forward
+    action: accept
+    comment: "agent -> Pi-hole DNS"
+    src-address: 192.168.40.0/24
+    dst-address: 192.168.10.10
+    protocol: udp
+    dst-port: "53"
+    in-interface: bridge1.40
+
+  - chain: forward
+    action: accept
+    comment: "agent -> Pi-hole DNS (TCP)"
+    src-address: 192.168.40.0/24
+    dst-address: 192.168.10.10
+    protocol: tcp
+    dst-port: "53"
+    in-interface: bridge1.40
+
+  # Agent -> Beszel hub (monitoring)
+  - chain: forward
+    action: accept
+    comment: "agent -> beszel-hub on optiplex"
+    src-address: 192.168.40.30
+    dst-address: 192.168.10.20
+    protocol: tcp
+    dst-port: "8090"
+    in-interface: bridge1.40
+
+  # Agent -> internet HTTP/HTTPS
+  - chain: forward
+    action: accept
+    comment: "agent -> internet HTTP/HTTPS"
+    src-address: 192.168.40.0/24
+    out-interface: ether1
+    protocol: tcp
+    dst-port: "80,443"
+    in-interface: bridge1.40
+
+  # Agent -> internet NTP
+  - chain: forward
+    action: accept
+    comment: "agent -> internet NTP"
+    src-address: 192.168.40.0/24
+    out-interface: ether1
+    protocol: udp
+    dst-port: "123"
+    in-interface: bridge1.40
+
   # Guest -> internet (all outbound)
   - chain: forward
     action: accept
@@ -214,7 +278,7 @@ firewall_filter_rules:
     out-interface: ether1
     in-interface: bridge1.30
 
-  # Drop all other inter-VLAN and IoT/Guest traffic
+  # Drop all other inter-VLAN and IoT/Guest/Agent traffic
   - chain: forward
     action: drop
     comment: "drop all other forward"
