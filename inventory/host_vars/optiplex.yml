@@ -14,6 +14,7 @@ data_dirs:
   - music
   - youtube                  # token.json + client_secret.json live here
   - audiobooks
+  - paperless-consume        # drop folder for Paperless-ngx auto-import
 
 # Host-specific packages (extends group_vars packages list)
 extra_packages:

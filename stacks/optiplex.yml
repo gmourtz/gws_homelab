@@ -22,6 +22,9 @@ services:
       - it-tools-net
       - drawio-net
       - homepage-net
+      - dozzle-net
+      - jellyseerr-net
+      - paperless-net
     ports:
       - "80:80"
     configs:
@@ -38,6 +41,8 @@ services:
     image: tecnativa/docker-socket-proxy:latest
     container_name: docker-socket-proxy
     restart: unless-stopped
+    networks:
+      - docker-proxy-net
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
@@ -192,6 +197,84 @@ services:
       timeout: 5s
       retries: 3
 
+  # --- Docker log viewer ---
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    networks:
+      - dozzle-net
+      - docker-proxy-net
+    environment:
+      DOZZLE_REMOTE_HOST: "tcp://docker-socket-proxy:2375"
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- Media requests ---
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    restart: unless-stopped
+    networks:
+      - jellyseerr-net
+      - jellyfin-net
+    volumes:
+      - jellyseerr-config:/app/config
+    environment:
+      TZ: "{{ timezone }}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:5055/api/v1/status || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- Document management ---
+  paperless-redis:
+    image: redis:7-alpine
+    container_name: paperless-redis
+    restart: unless-stopped
+    networks:
+      - paperless-net
+    volumes:
+      - paperless-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  paperless-ngx:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless-ngx
+    restart: unless-stopped
+    networks:
+      - paperless-net
+    depends_on:
+      paperless-redis:
+        condition: service_healthy
+    volumes:
+      - paperless-data:/usr/src/paperless/data
+      - paperless-media:/usr/src/paperless/media
+      - /mnt/media/paperless-consume:/usr/src/paperless/consume
+    environment:
+      PAPERLESS_REDIS: "redis://paperless-redis:6379"
+      PAPERLESS_SECRET_KEY: "{{ vault_paperless_secret_key }}"
+      PAPERLESS_URL: "http://paperless.{{ local_domain }}"
+      PAPERLESS_TIME_ZONE: "{{ timezone }}"
+      PAPERLESS_OCR_LANGUAGE: "eng"
+      PAPERLESS_ADMIN_USER: "{{ vault_paperless_admin_user }}"
+      PAPERLESS_ADMIN_PASSWORD: "{{ vault_paperless_admin_password }}"
+      USERMAP_UID: "1000"
+      USERMAP_GID: "1000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # --- Utilities ---
   stirling-pdf:
     image: stirlingtools/stirling-pdf:latest
@@ -242,6 +325,12 @@ services:
     restart: unless-stopped
     networks:
       - homepage-net
+      - docker-proxy-net  # access docker-socket-proxy for container status
+      - beszel-net
+      - jellyfin-net
+      - audiobookshelf-net
+      - jellyseerr-net
+      - paperless-net
     volumes:
       - homepage-config:/app/config
     environment:
@@ -311,6 +400,14 @@ networks:
     driver: bridge
   homepage-net:
     driver: bridge
+  docker-proxy-net:
+    driver: bridge
+  dozzle-net:
+    driver: bridge
+  jellyseerr-net:
+    driver: bridge
+  paperless-net:
+    driver: bridge
   website-net:
     driver: bridge
 
@@ -322,5 +419,9 @@ volumes:
   audiobookshelf-metadata:
   stirling-pdf-data:
   homepage-config:
+  jellyseerr-config:
+  paperless-data:
+  paperless-media:
+  paperless-redis-data:
   portfolio-data:
 

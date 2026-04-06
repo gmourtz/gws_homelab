@@ -50,6 +50,27 @@
         pull: always
         state: present
 
+    # --- Homepage config (optiplex only) ---
+    - name: Ensure Homepage config directory exists in volume
+      ansible.builtin.file:
+        path: /var/lib/docker/volumes/stacks_homepage-config/_data
+        state: directory
+        mode: "0755"
+      when: inventory_hostname == 'optiplex'
+
+    - name: Write Homepage config files
+      ansible.builtin.template:
+        src: "{{ stacks_src }}/homepage/{{ item }}.j2"
+        dest: /var/lib/docker/volumes/stacks_homepage-config/_data/{{ item }}
+        mode: "0644"
+      loop:
+        - settings.yaml
+        - widgets.yaml
+        - services.yaml
+        - docker.yaml
+      when: inventory_hostname == 'optiplex'
+      notify: Restart homepage
+
     # --- Jellyfin post-deploy config (optiplex only) ---
     - name: Ensure Jellyfin config directory exists in volume
       ansible.builtin.file:
@@ -104,6 +125,10 @@
       when: tailscale_serve_port is defined
 
   handlers:
+    - name: Restart homepage
+      ansible.builtin.command: docker restart homepage
+      changed_when: true
+
     - name: Restart jellyfin
       ansible.builtin.command: docker restart jellyfin
       changed_when: true
