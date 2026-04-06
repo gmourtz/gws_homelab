@@ -50,6 +50,22 @@
         pull: always
         state: present
 
+    # --- Jellyfin post-deploy config (optiplex only) ---
+    - name: Ensure Jellyfin config directory exists in volume
+      ansible.builtin.file:
+        path: /var/lib/docker/volumes/stacks_jellyfin-config/_data/config
+        state: directory
+        mode: "0755"
+      when: inventory_hostname == 'optiplex'
+
+    - name: Write Jellyfin encoding config
+      ansible.builtin.template:
+        src: "{{ stacks_src }}/jellyfin-encoding.xml.j2"
+        dest: /var/lib/docker/volumes/stacks_jellyfin-config/_data/config/encoding.xml
+        mode: "0644"
+      when: inventory_hostname == 'optiplex'
+      notify: Restart jellyfin
+
     - name: Configure Pi-hole allowlist
       ansible.builtin.command:
         cmd: docker exec pihole pihole allow {{ item }}
@@ -88,6 +104,10 @@
       when: tailscale_serve_port is defined
 
   handlers:
+    - name: Restart jellyfin
+      ansible.builtin.command: docker restart jellyfin
+      changed_when: true
+
     - name: Restart openclaw
       ansible.builtin.command: docker restart openclaw
       changed_when: true

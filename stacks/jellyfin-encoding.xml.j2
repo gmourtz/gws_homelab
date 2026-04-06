@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EncodingOptions>
+  <EncodingThreadCount>-1</EncodingThreadCount>
+  <DownMixAudioBoost>2</DownMixAudioBoost>
+  <MaxMuxingQueueSize>2048</MaxMuxingQueueSize>
+  <EnableThrottling>false</EnableThrottling>
+  <ThrottleDelaySeconds>180</ThrottleDelaySeconds>
+
+  <!-- Intel Quick Sync (QSV) — i5-6500T (Skylake, gen 6) on optiplex -->
+  <HardwareAccelerationType>qsv</HardwareAccelerationType>
+  <VaapiDevice>/dev/dri/renderD128</VaapiDevice>
+  <QsvDevice></QsvDevice>
+
+  <!-- Hardware decoding: H264 + HEVC 8-bit + VC1 (all supported on Skylake gen 6) -->
+  <!-- 10-bit HEVC/VP9 intentionally disabled — not supported in hardware on Skylake -->
+  <HardwareDecodingCodecs>
+    <string>h264</string>
+    <string>hevc</string>
+    <string>vc1</string>
+  </HardwareDecodingCodecs>
+  <EnableDecodingColorDepth10Hevc>false</EnableDecodingColorDepth10Hevc>
+  <EnableDecodingColorDepth10Vp9>false</EnableDecodingColorDepth10Vp9>
+  <EnableDecodingColorDepth10HevcRext>false</EnableDecodingColorDepth10HevcRext>
+  <EnableDecodingColorDepth12HevcRext>false</EnableDecodingColorDepth12HevcRext>
+
+  <PreferSystemNativeHwDecoder>true</PreferSystemNativeHwDecoder>
+  <EnableHardwareEncoding>true</EnableHardwareEncoding>
+  <EnableIntelLowPowerH264HwEncoder>false</EnableIntelLowPowerH264HwEncoder>
+  <EnableIntelLowPowerHevcHwEncoder>false</EnableIntelLowPowerHevcHwEncoder>
+  <AllowHevcEncoding>true</AllowHevcEncoding>
+  <AllowAv1Encoding>false</AllowAv1Encoding>
+
+  <!-- Tone mapping (requires intel-opencl-icd on host) -->
+  <EnableTonemapping>false</EnableTonemapping>
+  <EnableVppTonemapping>false</EnableVppTonemapping>
+  <TonemappingAlgorithm>bt2390</TonemappingAlgorithm>
+  <TonemappingMode>auto</TonemappingMode>
+  <TonemappingRange>auto</TonemappingRange>
+  <TonemappingDesat>0</TonemappingDesat>
+  <TonemappingPeak>100</TonemappingPeak>
+  <TonemappingParam>0</TonemappingParam>
+  <VppTonemappingBrightness>0</VppTonemappingBrightness>
+  <VppTonemappingContrast>1.2</VppTonemappingContrast>
+
+  <H264Crf>23</H264Crf>
+  <H265Crf>28</H265Crf>
+  <EncoderPreset>veryfast</EncoderPreset>
+  <DeinterlaceDoubleRate>false</DeinterlaceDoubleRate>
+  <DeinterlaceMethod>yadif</DeinterlaceMethod>
+  <EnableSubtitleExtraction>true</EnableSubtitleExtraction>
+
+  <AllowOnDemandMetadataBasedKeyframeExtractionForExtensions>
+    <string>mkv</string>
+  </AllowOnDemandMetadataBasedKeyframeExtractionForExtensions>
+</EncodingOptions>
