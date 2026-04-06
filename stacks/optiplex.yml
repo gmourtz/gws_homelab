@@ -19,6 +19,9 @@ services:
       - jellyfin-net
       - audiobookshelf-net
       - stirling-pdf-net
+      - it-tools-net
+      - drawio-net
+      - homepage-net
     ports:
       - "80:80"
     configs:
@@ -206,6 +209,49 @@ services:
       timeout: 5s
       retries: 3
 
+  it-tools:
+    image: corentinth/it-tools:latest
+    container_name: it-tools
+    restart: unless-stopped
+    networks:
+      - it-tools-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  drawio:
+    image: jgraph/drawio:latest
+    container_name: drawio
+    restart: unless-stopped
+    networks:
+      - drawio-net
+    environment:
+      DRAWIO_SELF_CONTAINED: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- Dashboard ---
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    networks:
+      - homepage-net
+    volumes:
+      - homepage-config:/app/config
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: "homepage.{{ local_domain }}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # --- Media server ---
   audiobookshelf:
     image: ghcr.io/advplyr/audiobookshelf:latest
@@ -259,6 +305,12 @@ networks:
     driver: bridge
   stirling-pdf-net:
     driver: bridge
+  it-tools-net:
+    driver: bridge
+  drawio-net:
+    driver: bridge
+  homepage-net:
+    driver: bridge
   website-net:
     driver: bridge
 
@@ -269,5 +321,6 @@ volumes:
   audiobookshelf-config:
   audiobookshelf-metadata:
   stirling-pdf-data:
+  homepage-config:
   portfolio-data:
 

@@ -36,7 +36,7 @@ local_domain: internal
 # - name: the primary hostname (typically the inventory hostname)
 # - aliases: optional service names that resolve to the same IP
 dns_records:
-  - { name: optiplex, ip: "192.168.10.20", aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf] }
+  - { name: optiplex, ip: "192.168.10.20", aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage] }
   - { name: rpi3,     ip: "192.168.10.10", aliases: [pihole] }
   - { name: openclaw, ip: "192.168.20.30" }
 
@@ -48,3 +48,6 @@ proxy_services:
   - { name: jellyfin, upstream: "jellyfin:8096" }
   - { name: audiobookshelf, upstream: "audiobookshelf:80" }
   - { name: stirling-pdf, upstream: "stirling-pdf:8080" }
+  - { name: it-tools, upstream: "it-tools:80" }
+  - { name: drawio, upstream: "drawio:8080" }
+  - { name: homepage, upstream: "homepage:3000" }
