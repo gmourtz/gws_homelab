@@ -49,6 +49,7 @@
         project_src: "{{ stacks_dest }}"
         pull: always
         state: present
+        remove_orphans: true
 
     # --- Homepage config (optiplex only) ---
     - name: Ensure Homepage config directory exists in volume
