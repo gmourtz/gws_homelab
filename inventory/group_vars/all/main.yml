@@ -36,7 +36,7 @@ local_domain: internal
 # - name: the primary hostname (typically the inventory hostname)
 # - aliases: optional service names that resolve to the same IP
 dns_records:
-  - { name: optiplex, ip: "192.168.10.20", aliases: [beszel, jellyfin] }
+  - { name: optiplex, ip: "192.168.10.20", aliases: [beszel, jellyfin, audiobookshelf] }
   - { name: rpi3,     ip: "192.168.10.10", aliases: [pihole] }
   - { name: openclaw, ip: "192.168.20.30" }
 
@@ -46,3 +46,4 @@ dns_records:
 proxy_services:
   - { name: beszel, upstream: "beszel-hub:8090" }
   - { name: jellyfin, upstream: "jellyfin:8096" }
+  - { name: audiobookshelf, upstream: "audiobookshelf:80" }

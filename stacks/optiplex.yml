@@ -17,6 +17,7 @@ services:
     networks:
       - beszel-net
       - jellyfin-net
+      - audiobookshelf-net
     ports:
       - "80:80"
     configs:
@@ -188,6 +189,22 @@ services:
       retries: 3
 
   # --- Media server ---
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    container_name: audiobookshelf
+    restart: unless-stopped
+    networks:
+      - audiobookshelf-net
+    volumes:
+      - audiobookshelf-config:/config
+      - audiobookshelf-metadata:/metadata
+      - /mnt/media/audiobooks:/audiobooks
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/healthcheck || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   jellyfin:
     image: jellyfin/jellyfin:latest
     container_name: jellyfin
@@ -220,6 +237,8 @@ networks:
     driver: bridge
   jellyfin-net:
     driver: bridge
+  audiobookshelf-net:
+    driver: bridge
   website-net:
     driver: bridge
 
@@ -227,5 +246,7 @@ volumes:
   beszel-data:
   jellyfin-config:
   jellyfin-cache:
+  audiobookshelf-config:
+  audiobookshelf-metadata:
   portfolio-data:
 
