@@ -7,14 +7,33 @@ configs:
         reverse_proxy {{ svc.upstream }}
       }
 {% endfor %}
+{% for svc in ondemand_services | default([]) %}
+      http://{{ svc.name }}.{{ local_domain }} {
+        route /* {
+          sablier http://sablier:10000 {
+            group {{ svc.group }}
+            session_duration {{ svc.session_duration }}
+            dynamic {
+              display_name {{ svc.name }}
+              theme hacker-terminal
+            }
+          }
+          reverse_proxy {{ svc.upstream }}
+        }
+      }
+{% endfor %}
 
 services:
   # --- Reverse proxy ---
   caddy:
-    image: caddy:2-alpine
+    image: {{ ghcr_registry }}/gmourtz/caddy-sablier:latest
     container_name: caddy
     restart: unless-stopped
+    depends_on:
+      sablier:
+        condition: service_healthy
     networks:
+      - sablier-net
       - beszel-net
       - jellyfin-net
       - audiobookshelf-net
@@ -32,6 +51,26 @@ services:
         target: /etc/caddy/Caddyfile
     healthcheck:
       test: ["CMD", "caddy", "version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Sablier needs direct Docker socket access (not via docker-socket-proxy)
+  # because it starts/stops containers — the proxy only allows read operations
+  sablier:
+    image: sablierapp/sablier:1.11.2
+    container_name: sablier
+    restart: unless-stopped
+    command:
+      - start
+      - --provider.name=docker
+      - --provider.auto-stop-on-startup
+    networks:
+      - sablier-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "/bin/sablier", "health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -288,6 +327,9 @@ services:
       - stirling-pdf-data:/usr/share/tessdata
     environment:
       DOCKER_ENABLE_SECURITY: "false"
+    labels:
+      sablier.enable: "true"
+      sablier.group: "stirling-pdf"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/api/v1/info/status || exit 1"]
       interval: 30s
@@ -393,6 +435,8 @@ networks:
   jellyfin-net:
     driver: bridge
   audiobookshelf-net:
+    driver: bridge
+  sablier-net:
     driver: bridge
   stirling-pdf-net:
     driver: bridge
