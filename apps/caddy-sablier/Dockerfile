@@ -5,4 +5,6 @@ RUN xcaddy build \
 
 FROM caddy:2.11.2-alpine
 
+RUN apk upgrade --no-cache
+
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
