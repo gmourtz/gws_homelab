@@ -1,0 +1,173 @@
+---
+- Media:
+    - Jellyfin:
+        href: http://jellyfin.{{ local_domain }}/
+        icon: jellyfin.png
+        description: Media server
+        server: optiplex
+        container: jellyfin
+        widget:
+          type: jellyfin
+          url: http://jellyfin:8096
+          key: {{ vault_homepage_jellyfin_api_key }}
+          version: 2
+          enableBlocks: true
+          enableNowPlaying: true
+          fields: ["movies", "series", "songs"]
+
+    - Audiobookshelf:
+        href: http://audiobookshelf.{{ local_domain }}/
+        icon: audiobookshelf.png
+        description: Audiobooks & podcasts
+        server: optiplex
+        container: audiobookshelf
+        widget:
+          type: audiobookshelf
+          url: http://audiobookshelf:80
+          key: {{ vault_homepage_audiobookshelf_api_key }}
+          fields: ["books", "podcasts", "podcastEpisodes"]
+
+    - Jellyseerr:
+        href: http://jellyseerr.{{ local_domain }}/
+        icon: jellyseerr.png
+        description: Media requests
+        server: optiplex
+        container: jellyseerr
+        widget:
+          type: jellyseerr
+          url: http://jellyseerr:5055
+          key: {{ vault_homepage_jellyseerr_api_key }}
+          fields: ["pending", "approved", "available"]
+
+- Monitoring:
+    - optiplex:
+        href: http://beszel.{{ local_domain }}/
+        icon: beszel.png
+        description: i5-6500T · 6GB RAM · 240GB SSD
+        server: optiplex
+        container: beszel-hub
+        widget:
+          type: beszel
+          url: http://beszel-hub:8090
+          username: {{ vault_homepage_beszel_username }}
+          password: {{ vault_homepage_beszel_password }}
+          systemId: {{ vault_homepage_beszel_id_optiplex }}
+          version: 2
+          fields: ["cpu", "memory", "disk", "network"]
+
+    - rpi3:
+        href: http://beszel.{{ local_domain }}/
+        icon: beszel.png
+        description: Raspberry Pi 3 B+ · 906MB RAM
+        widget:
+          type: beszel
+          url: http://beszel-hub:8090
+          username: {{ vault_homepage_beszel_username }}
+          password: {{ vault_homepage_beszel_password }}
+          systemId: {{ vault_homepage_beszel_id_rpi3 }}
+          version: 2
+          fields: ["cpu", "memory", "disk", "network"]
+
+    - openclaw:
+        href: http://beszel.{{ local_domain }}/
+        icon: beszel.png
+        description: Lenovo · i5-8265U · 8GB RAM
+        widget:
+          type: beszel
+          url: http://beszel-hub:8090
+          username: {{ vault_homepage_beszel_username }}
+          password: {{ vault_homepage_beszel_password }}
+          systemId: {{ vault_homepage_beszel_id_openclaw }}
+          version: 2
+          fields: ["cpu", "memory", "disk", "network"]
+
+    - Pi-hole:
+        href: http://pihole.{{ local_domain }}/admin/
+        icon: pi-hole.png
+        description: DNS & ad blocking
+        server: rpi3
+        container: pihole
+        widget:
+          type: pihole
+          url: http://192.168.10.10
+          version: 6
+          key: {{ vault_homepage_pihole_api_key }}
+          fields: ["queries", "blocked", "blocked_percent", "gravity"]
+
+- Tools:
+    - Paperless:
+        href: http://paperless.{{ local_domain }}/
+        icon: paperless-ngx.png
+        description: Document management
+        server: optiplex
+        container: paperless-ngx
+        widget:
+          type: paperlessngx
+          url: http://paperless-ngx:8000
+          username: {{ vault_paperless_admin_user }}
+          password: {{ vault_paperless_admin_password }}
+          fields: ["total", "inbox"]
+
+    - Stirling PDF:
+        href: http://stirling-pdf.{{ local_domain }}/
+        icon: stirling-pdf.png
+        description: PDF tools
+        server: optiplex
+        container: stirling-pdf
+
+    - IT Tools:
+        href: http://it-tools.{{ local_domain }}/
+        icon: it-tools.png
+        description: Developer utilities
+        server: optiplex
+        container: it-tools
+
+    - Draw.io:
+        href: http://drawio.{{ local_domain }}/
+        icon: drawio.png
+        description: Diagrams
+        server: optiplex
+        container: drawio
+
+- Downloads:
+    - YouTube Videos:
+        href: http://jellyfin.{{ local_domain }}/
+        icon: youtube.png
+        description: Video playlist sync
+        server: optiplex
+        container: youtube-video-downloader
+
+    - YouTube Music:
+        href: http://jellyfin.{{ local_domain }}/
+        icon: youtube.png
+        description: Music playlist sync (FLAC)
+        server: optiplex
+        container: youtube-music-downloader
+
+- Infrastructure:
+    - Cloudflare Tunnel:
+        href: https://dash.cloudflare.com/
+        icon: cloudflare.png
+        description: Public tunnel
+        server: optiplex
+        container: cloudflared
+        widget:
+          type: cloudflared
+          accountid: {{ vault_homepage_cf_account_id }}
+          tunnelid: {{ vault_homepage_cf_tunnel_id }}
+          key: {{ vault_homepage_cf_token }}
+          fields: ["status", "origin_ip"]
+
+    - Dozzle:
+        href: http://dozzle.{{ local_domain }}/
+        icon: dozzle.png
+        description: Container logs
+        server: optiplex
+        container: dozzle
+
+    - Caddy:
+        href: http://optiplex.{{ local_domain }}/
+        icon: caddy.png
+        description: Reverse proxy
+        server: optiplex
+        container: caddy
