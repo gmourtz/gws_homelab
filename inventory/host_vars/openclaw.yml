@@ -1,5 +1,5 @@
 ---
-# Host vars for openclaw (VLAN 20 — IoT, isolated from trusted network)
+# Host vars for openclaw (VLAN 40 — Agent, isolated from trusted network)
 
 # UFW extra rules — allow management from trusted VLAN only
 ufw_extra_rules:
