@@ -206,7 +206,9 @@ services:
       - dozzle-net
       - docker-proxy-net
     environment:
-      DOZZLE_REMOTE_HOST: "tcp://docker-socket-proxy:2375"
+      DOCKER_HOST: "tcp://docker-socket-proxy:2375"
+      DOZZLE_HOSTNAME: "optiplex"
+      DOZZLE_REMOTE_AGENT: "rpi3.{{ local_domain }}:7007,openclaw.{{ local_domain }}:7007"
     healthcheck:
       test: ["CMD", "/dozzle", "healthcheck"]
       interval: 30s

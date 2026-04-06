@@ -210,6 +210,20 @@
             groups: docker
             append: true
 
+    - name: Configure Docker daemon
+      ansible.builtin.copy:
+        content: |
+          {
+            "default-address-pools": [
+              {"base": "10.10.0.0/16", "size": 24}
+            ]
+          }
+        dest: /etc/docker/daemon.json
+        mode: "0644"
+        owner: root
+        group: root
+      notify: Restart Docker
+
     # --- Tailscale ---
     - name: Add Tailscale GPG key
       ansible.builtin.get_url:
@@ -297,6 +311,11 @@
       changed_when: false
 
   handlers:
+    - name: Restart Docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+
     - name: Restart SSH
       ansible.builtin.systemd:
         name: ssh
