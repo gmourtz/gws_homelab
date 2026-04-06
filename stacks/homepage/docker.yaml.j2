@@ -1,0 +1,10 @@
+---
+# optiplex — connect via docker-socket-proxy on the shared docker-proxy-net
+optiplex:
+  host: docker-socket-proxy
+  port: 2375
+
+# rpi3 — docker-socket-proxy exposes port 2375 to optiplex (192.168.10.20) via UFW rule
+rpi3:
+  host: 192.168.10.10
+  port: 2375
