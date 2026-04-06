@@ -216,6 +216,7 @@
         url: https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg
         dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
         mode: "0644"
+      when: tailscale_enabled | default(true)
 
     - name: Add Tailscale repo
       ansible.builtin.apt_repository:
@@ -224,24 +225,28 @@
           https://pkgs.tailscale.com/stable/ubuntu
           {{ ansible_facts['distribution_release'] }} main
         filename: tailscale
+      when: tailscale_enabled | default(true)
 
     - name: Install Tailscale
       ansible.builtin.apt:
         name: tailscale
         state: present
         update_cache: true
+      when: tailscale_enabled | default(true)
 
     - name: Enable tailscaled
       ansible.builtin.systemd:
         name: tailscaled
         state: started
         enabled: true
+      when: tailscale_enabled | default(true)
 
     - name: Check Tailscale status
       ansible.builtin.command: tailscale status --json
       register: ts_status
       changed_when: false
       failed_when: false
+      when: tailscale_enabled | default(true)
 
     - name: Connect Tailscale
       ansible.builtin.command: >-
@@ -250,6 +255,7 @@
         --advertise-routes={{ tailscale_advertise_routes | join(',') }}
         {% endif %}
       when:
+        - tailscale_enabled | default(true)
         - vault_tailscale_authkey is defined
         - (ts_status.stdout | from_json).BackendState | default('') != 'Running'
       no_log: true
@@ -260,6 +266,7 @@
         tailscale set
         --advertise-routes={{ tailscale_advertise_routes | join(',') }}
       when:
+        - tailscale_enabled | default(true)
         - tailscale_advertise_routes is defined
         - (ts_status.stdout | from_json).BackendState | default('') == 'Running'
       tags: [tailscale-connect]
@@ -270,14 +277,24 @@
       changed_when: false
       failed_when: false
       become: false
-      when: tailscale_serve_port is defined
+      when:
+        - tailscale_enabled | default(true)
+        - tailscale_serve_port is defined
 
     - name: Configure Tailscale serve (HTTPS proxy for gateway UI)
       ansible.builtin.command: tailscale serve --bg --yes localhost:{{ tailscale_serve_port }}
       when:
+        - tailscale_enabled | default(true)
         - tailscale_serve_port is defined
         - (ts_status.stdout | from_json).BackendState | default('') == 'Running'
         - "'No serve config' in (ts_serve_status.stdout | default(''))"
+
+    - name: Disconnect Tailscale (tailscale_enabled=false)
+      ansible.builtin.command: tailscale logout
+      when:
+        - not (tailscale_enabled | default(true))
+      failed_when: false
+      changed_when: false
 
   handlers:
     - name: Restart SSH

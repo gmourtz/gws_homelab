@@ -36,7 +36,7 @@ services:
       VOLUMES: 1
       INFO: 1
     ports:
-      - "127.0.0.1:2375:2375"
+      - "2375:2375"  # bound to all interfaces — UFW restricts to 192.168.10.20 (optiplex) only
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2375/_ping || exit 1"]
       interval: 30s
