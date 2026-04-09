@@ -168,3 +168,4 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
+          trivyignores: apps/${{ matrix.app }}/.trivyignore

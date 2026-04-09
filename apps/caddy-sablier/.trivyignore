@@ -1,0 +1,11 @@
+# CVEs in Caddy's own Go dependencies (caddy:2.11.2).
+# No fixed Caddy release available yet — remove once Caddy ships a patch.
+
+# go-jose panic in JWE decryption (fixed in go-jose v3.0.5 / v4.1.4)
+CVE-2026-34986
+
+# smallstep/certificates unauthenticated SCEP cert issuance (fixed in v0.30.0)
+CVE-2026-30836
+
+# gRPC-Go authorization bypass via HTTP/2 path validation (fixed in grpc v1.79.3)
+CVE-2026-33186
