@@ -44,6 +44,7 @@ services:
       - dozzle-net
       - jellyseerr-net
       - paperless-net
+      - immich-net
     ports:
       - "80:80"
     configs:
@@ -375,6 +376,7 @@ services:
       - audiobookshelf-net
       - jellyseerr-net
       - paperless-net
+      - immich-net
     volumes:
       - homepage-config:/app/config
     environment:
@@ -423,6 +425,86 @@ services:
       timeout: 5s
       retries: 3
 
+  # --- Photo management ---
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:release
+    container_name: immich-server
+    restart: unless-stopped
+    networks:
+      - immich-net
+    depends_on:
+      immich-postgres:
+        condition: service_healthy
+      immich-redis:
+        condition: service_healthy
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+    group_add:
+      - "993"  # render group GID — Intel Quick Sync for video transcoding
+    volumes:
+      - /mnt/media/photos:/usr/src/app/upload
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      DB_HOSTNAME: "immich-postgres"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "{{ vault_immich_db_password }}"
+      DB_DATABASE_NAME: "immich"
+      REDIS_HOSTNAME: "immich-redis"
+      IMMICH_MACHINE_LEARNING_URL: "http://immich-machine-learning:3003"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:2283/api/server/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:release
+    container_name: immich-machine-learning
+    restart: unless-stopped
+    mem_limit: 2g
+    networks:
+      - immich-net
+    volumes:
+      - immich-model-cache:/cache
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:3003/ping\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  immich-postgres:
+    image: tensorchord/pgvecto-rs:pg14-v0.2.0
+    container_name: immich-postgres
+    restart: unless-stopped
+    networks:
+      - immich-net
+    volumes:
+      - immich-postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "{{ vault_immich_db_password }}"
+      POSTGRES_USER: "postgres"
+      POSTGRES_DB: "immich"
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d immich -U postgres"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  immich-redis:
+    image: redis:7-alpine
+    container_name: immich-redis
+    restart: unless-stopped
+    networks:
+      - immich-net
+    volumes:
+      - immich-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 networks:
   beszel-net:
     driver: bridge
@@ -456,6 +538,8 @@ networks:
     driver: bridge
   website-net:
     driver: bridge
+  immich-net:
+    driver: bridge
 
 volumes:
   beszel-data:
@@ -469,5 +553,8 @@ volumes:
   paperless-data:
   paperless-media:
   paperless-redis-data:
+  immich-postgres-data:
+  immich-model-cache:
+  immich-redis-data:
   portfolio-data:
 
