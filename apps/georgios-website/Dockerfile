@@ -1,5 +1,7 @@
 FROM nginx:alpine
 
+RUN apk upgrade --no-cache
+
 COPY website/ /usr/share/nginx/html
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
