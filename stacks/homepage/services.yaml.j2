@@ -88,6 +88,13 @@
           version: 2
           fields: ["cpu", "memory", "disk", "network"]
 
+    - Uptime Kuma:
+        href: http://uptime-kuma.{{ local_domain }}/
+        icon: uptime-kuma.png
+        description: Service uptime monitoring
+        server: optiplex
+        container: uptime-kuma
+
     - Pi-hole:
         href: http://pihole.{{ local_domain }}/admin/
         icon: pi-hole.png

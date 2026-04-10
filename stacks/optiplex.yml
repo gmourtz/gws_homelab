@@ -45,6 +45,7 @@ services:
       - jellyseerr-net
       - paperless-net
       - immich-net
+      - uptime-kuma-net
     ports:
       - "80:80"
     configs:
@@ -377,6 +378,7 @@ services:
       - jellyseerr-net
       - paperless-net
       - immich-net
+      - uptime-kuma-net
     volumes:
       - homepage-config:/app/config
     environment:
@@ -505,6 +507,21 @@ services:
       timeout: 5s
       retries: 3
 
+  # --- Uptime monitoring ---
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    networks:
+      - uptime-kuma-net
+    volumes:
+      - uptime-kuma-data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "extra/healthcheck.js"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 networks:
   beszel-net:
     driver: bridge
@@ -540,6 +557,8 @@ networks:
     driver: bridge
   immich-net:
     driver: bridge
+  uptime-kuma-net:
+    driver: bridge
 
 volumes:
   beszel-data:
@@ -556,5 +575,6 @@ volumes:
   immich-postgres-data:
   immich-model-cache:
   immich-redis-data:
+  uptime-kuma-data:
   portfolio-data:
 
