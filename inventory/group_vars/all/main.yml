@@ -36,26 +36,26 @@ local_domain: internal
 # - name: the primary hostname (typically the inventory hostname)
 # - aliases: optional service names that resolve to the same IP
 dns_records:
-  - { name: optiplex, ip: "192.168.10.20", aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, paperless, immich, uptime-kuma, actual-budget] }
-  - { name: rpi3,     ip: "192.168.10.10", aliases: [pihole] }
-  - { name: openclaw, ip: "192.168.40.30" }
+  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, paperless, immich, uptime-kuma, actual-budget] }
+  - { name: rpi3,     ip: "192.168.10.10", tag: hosts, aliases: [pihole] }
+  - { name: openclaw, ip: "192.168.40.30", tag: hosts }
 
 # Services proxied by Caddy on optiplex (port 80, routed by Host header)
 # - name: DNS alias (must exist in dns_records aliases)
 # - upstream: container_name:port (resolved via Docker Compose DNS)
 proxy_services:
-  - { name: beszel, upstream: "beszel-hub:8090" }
-  - { name: jellyfin, upstream: "jellyfin:8096" }
-  - { name: audiobookshelf, upstream: "audiobookshelf:80" }
-  - { name: it-tools, upstream: "it-tools:80" }
-  - { name: drawio, upstream: "drawio:8080" }
-  - { name: homepage, upstream: "homepage:3000" }
-  - { name: dozzle, upstream: "dozzle:8080" }
-  - { name: jellyseerr, upstream: "jellyseerr:5055" }
-  - { name: paperless, upstream: "paperless-ngx:8000" }
-  - { name: immich, upstream: "immich-server:2283" }
-  - { name: uptime-kuma, upstream: "uptime-kuma:3001" }
-  - { name: actual-budget, upstream: "actual-budget:5006" }
+  - { name: beszel,        upstream: "beszel-hub:8090",       tag: monitoring     }
+  - { name: jellyfin,      upstream: "jellyfin:8096",         tag: media          }
+  - { name: audiobookshelf, upstream: "audiobookshelf:80",    tag: media          }
+  - { name: it-tools,      upstream: "it-tools:80",           tag: tools          }
+  - { name: drawio,        upstream: "drawio:8080",           tag: tools          }
+  - { name: homepage,      upstream: "homepage:3000",         tag: infrastructure }
+  - { name: dozzle,        upstream: "dozzle:8080",           tag: infrastructure }
+  - { name: jellyseerr,    upstream: "jellyseerr:5055",       tag: media          }
+  - { name: paperless,     upstream: "paperless-ngx:8000",    tag: tools          }
+  - { name: immich,        upstream: "immich-server:2283",    tag: media          }
+  - { name: uptime-kuma,   upstream: "uptime-kuma:3001",      tag: monitoring     }
+  - { name: actual-budget, upstream: "actual-budget:5006",    tag: tools          }
 
 # On-demand services managed by Sablier (auto start on request, auto stop after idle)
 # - name: DNS alias (must exist in dns_records aliases)
@@ -63,4 +63,4 @@ proxy_services:
 # - group: Sablier group name (must match sablier.group label on the container)
 # - session_duration: how long the container stays up after last request
 ondemand_services:
-  - { name: stirling-pdf, upstream: "stirling-pdf:8080", group: "stirling-pdf", session_duration: "30m" }
+  - { name: stirling-pdf, upstream: "stirling-pdf:8080", group: "stirling-pdf", session_duration: "30m", tag: tools }

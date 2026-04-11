@@ -164,6 +164,12 @@
   vars:
     kuma_api_url: "http://uptime-kuma.{{ local_domain }}"
     kuma_enabled: "{{ vault_uptime_kuma_telegram_bot_token is defined }}"
+    kuma_tag_colors:
+      media:          "#3b82f6"   # blue
+      tools:          "#22c55e"   # green
+      monitoring:     "#f97316"   # orange
+      infrastructure: "#8b5cf6"   # purple
+      hosts:          "#ec4899"   # pink
 
   module_defaults:
     lucasheld.uptime_kuma.monitor:
@@ -198,6 +204,16 @@
       when: kuma_enabled
       no_log: true
 
+    - name: Create monitor tags
+      lucasheld.uptime_kuma.tag:
+        name: "{{ item.key }}"
+        color: "{{ item.value }}"
+        state: present
+      loop: "{{ kuma_tag_colors | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+      when: kuma_enabled
+
     - name: Add HTTP monitors for proxied services
       lucasheld.uptime_kuma.monitor:
         name: "{{ item.name }}"
@@ -206,12 +222,23 @@
         interval: 60
         retryInterval: 20
         maxretries: 2
+        notification_names: ["telegram-homelab"]
         state: present
       loop: "{{ proxy_services }}"
       loop_control:
         label: "{{ item.name }}"
       when: kuma_enabled
       no_log: true
+
+    - name: Tag proxied service monitors
+      lucasheld.uptime_kuma.monitor_tag:
+        monitor_name: "{{ item.name }}"
+        tag_name: "{{ item.tag }}"
+        state: present
+      loop: "{{ proxy_services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: kuma_enabled
 
     - name: Add HTTP monitors for on-demand services
       lucasheld.uptime_kuma.monitor:
@@ -221,12 +248,23 @@
         interval: 60
         retryInterval: 20
         maxretries: 2
+        notification_names: ["telegram-homelab"]
         state: present
       loop: "{{ ondemand_services }}"
       loop_control:
         label: "{{ item.name }}"
       when: kuma_enabled
       no_log: true
+
+    - name: Tag on-demand service monitors
+      lucasheld.uptime_kuma.monitor_tag:
+        monitor_name: "{{ item.name }}"
+        tag_name: "{{ item.tag }}"
+        state: present
+      loop: "{{ ondemand_services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: kuma_enabled
 
     - name: Add TCP port 22 monitors for hosts (SSH reachability)
       lucasheld.uptime_kuma.monitor:
@@ -237,9 +275,20 @@
         interval: 60
         retryInterval: 20
         maxretries: 2
+        notification_names: ["telegram-homelab"]
         state: present
       loop: "{{ dns_records }}"
       loop_control:
         label: "{{ item.name }}"
       when: kuma_enabled
       no_log: true
+
+    - name: Tag host monitors
+      lucasheld.uptime_kuma.monitor_tag:
+        monitor_name: "{{ item.name }} (ssh)"
+        tag_name: "{{ item.tag }}"
+        state: present
+      loop: "{{ dns_records }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: kuma_enabled
