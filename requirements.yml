@@ -11,3 +11,5 @@ collections:
     version: ">=3.0.0"
   - name: community.routeros
     version: ">=2.1.0"
+  - name: lucasheld.uptime_kuma
+    version: ">=1.0.0"

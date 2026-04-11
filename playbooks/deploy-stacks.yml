@@ -137,3 +137,103 @@
     - name: Restart openclaw
       ansible.builtin.command: docker restart openclaw
       changed_when: true
+
+
+# -----------------------------------------------------------------------
+# Uptime Kuma post-deploy config
+#
+# Runs locally against the Uptime Kuma API on optiplex. Skipped entirely
+# if the Telegram bot vault var is missing — set the vault vars only
+# AFTER the admin account has been created via the UI (one-time).
+#
+# Vault vars required:
+#   vault_uptime_kuma_admin_user
+#   vault_uptime_kuma_admin_password
+#   vault_uptime_kuma_telegram_bot_token
+#   vault_uptime_kuma_telegram_chat_id
+#
+# Python dep (install via `make setup`):
+#   pip install uptime-kuma-api
+# -----------------------------------------------------------------------
+- name: Configure Uptime Kuma monitors and notifications
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+
+  vars_files:
+    - ../inventory/group_vars/all/main.yml
+    - ../inventory/group_vars/all/vault.yml
+
+  vars:
+    kuma_api_url: "http://uptime-kuma.{{ local_domain }}"
+    kuma_api_username: "{{ vault_uptime_kuma_admin_user | default(omit) }}"
+    kuma_api_password: "{{ vault_uptime_kuma_admin_password | default(omit) }}"
+    kuma_enabled: "{{ vault_uptime_kuma_telegram_bot_token is defined }}"
+
+  tasks:
+    - name: Add Telegram notification channel
+      lucasheld.uptime_kuma.notification:
+        api_url: "{{ kuma_api_url }}"
+        api_username: "{{ kuma_api_username }}"
+        api_password: "{{ kuma_api_password }}"
+        name: telegram-homelab
+        type: telegram
+        isDefault: true
+        applyExisting: true
+        telegramBotToken: "{{ vault_uptime_kuma_telegram_bot_token }}"
+        telegramChatID: "{{ vault_uptime_kuma_telegram_chat_id }}"
+        state: present
+      when: kuma_enabled
+
+    - name: Add HTTP monitors for proxied services
+      lucasheld.uptime_kuma.monitor:
+        api_url: "{{ kuma_api_url }}"
+        api_username: "{{ kuma_api_username }}"
+        api_password: "{{ kuma_api_password }}"
+        name: "{{ item.name }}"
+        type: http
+        url: "http://{{ item.name }}.{{ local_domain }}/"
+        interval: 60
+        retryInterval: 20
+        maxretries: 2
+        state: present
+      loop: "{{ proxy_services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: kuma_enabled
+
+    - name: Add HTTP monitors for on-demand services
+      lucasheld.uptime_kuma.monitor:
+        api_url: "{{ kuma_api_url }}"
+        api_username: "{{ kuma_api_username }}"
+        api_password: "{{ kuma_api_password }}"
+        name: "{{ item.name }}"
+        type: http
+        url: "http://{{ item.name }}.{{ local_domain }}/"
+        interval: 60
+        retryInterval: 20
+        maxretries: 2
+        state: present
+      loop: "{{ ondemand_services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: kuma_enabled
+
+    - name: Add TCP port 22 monitors for hosts (SSH reachability)
+      lucasheld.uptime_kuma.monitor:
+        api_url: "{{ kuma_api_url }}"
+        api_username: "{{ kuma_api_username }}"
+        api_password: "{{ kuma_api_password }}"
+        name: "{{ item.name }} (ssh)"
+        type: port
+        hostname: "{{ item.ip }}"
+        port: 22
+        interval: 60
+        retryInterval: 20
+        maxretries: 2
+        state: present
+      loop: "{{ dns_records }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: kuma_enabled

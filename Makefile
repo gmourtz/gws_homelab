@@ -9,6 +9,7 @@ help: ## Show this help
 setup: ## Install Ansible + dependencies
 	brew install ansible || true
 	ansible-galaxy install -r requirements.yml
+	pip install uptime-kuma-api
 
 ping: ## Test SSH to all hosts
 	ansible all:!routers -m ping

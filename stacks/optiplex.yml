@@ -514,6 +514,11 @@ services:
     restart: unless-stopped
     networks:
       - uptime-kuma-net
+    # Use Pi-hole as primary DNS so monitors can resolve *.internal URLs
+    # (Cloudflare as fallback if Pi-hole is unreachable).
+    dns:
+      - 192.168.10.10
+      - 1.1.1.1
     volumes:
       - uptime-kuma-data:/app/data
     healthcheck:
