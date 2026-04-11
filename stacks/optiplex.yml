@@ -46,6 +46,7 @@ services:
       - paperless-net
       - immich-net
       - uptime-kuma-net
+      - actual-budget-net
     ports:
       - "80:80"
     configs:
@@ -379,6 +380,7 @@ services:
       - paperless-net
       - immich-net
       - uptime-kuma-net
+      - actual-budget-net
     volumes:
       - homepage-config:/app/config
     environment:
@@ -507,6 +509,21 @@ services:
       timeout: 5s
       retries: 3
 
+  # --- Finance ---
+  actual-budget:
+    image: actualbudget/actual-server:latest
+    container_name: actual-budget
+    restart: unless-stopped
+    networks:
+      - actual-budget-net
+    volumes:
+      - actual-budget-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:5006/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # --- Uptime monitoring ---
   uptime-kuma:
     image: louislam/uptime-kuma:1
@@ -514,10 +531,10 @@ services:
     restart: unless-stopped
     networks:
       - uptime-kuma-net
-    # Use Pi-hole as primary DNS so monitors can resolve *.internal URLs
-    # (Cloudflare as fallback if Pi-hole is unreachable).
+    # Use Pi-hole as primary DNS so monitors can resolve *.internal URLs.
+    # Cloudflare as fallback so Telegram alerts can still fire if Pi-hole is down.
     dns:
-      - 192.168.10.10
+      - "{{ hostvars['rpi3'].ansible_host }}"
       - 1.1.1.1
     volumes:
       - uptime-kuma-data:/app/data
@@ -564,6 +581,8 @@ networks:
     driver: bridge
   uptime-kuma-net:
     driver: bridge
+  actual-budget-net:
+    driver: bridge
 
 volumes:
   beszel-data:
@@ -581,5 +600,6 @@ volumes:
   immich-model-cache:
   immich-redis-data:
   uptime-kuma-data:
+  actual-budget-data:
   portfolio-data:
 
