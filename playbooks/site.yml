@@ -12,7 +12,7 @@
 #   ansible-playbook playbooks/site.yml --limit rpi3
 
 - name: Configure homelab
-  hosts: all:!routers
+  hosts: all:!routers:!services
   become: true
   gather_facts: true
 

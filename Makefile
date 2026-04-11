@@ -14,7 +14,7 @@ setup: ## Install Ansible + dependencies
 	`ansible --version | awk '/python version/{print $$NF}' | tr -d '()'` -m pip install --quiet --upgrade 'uptime-kuma-api>=1.2.0,<2.0.0'
 
 ping: ## Test SSH to all hosts
-	ansible all:!routers -m ping
+	ansible all:!routers:!services -m ping
 
 deploy: ## Apply full configuration
 	ansible-playbook playbooks/site.yml

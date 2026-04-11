@@ -5,6 +5,13 @@ configs:
 {% for svc in proxy_services %}
       http://{{ svc.name }}.{{ local_domain }} {
         reverse_proxy {{ svc.upstream }}
+{% if svc.extra_headers is defined %}
+        header {
+{% for header_name, header_value in svc.extra_headers.items() %}
+          {{ header_name }} "{{ header_value }}"
+{% endfor %}
+        }
+{% endif %}
       }
 {% endfor %}
 {% for svc in ondemand_services | default([]) %}

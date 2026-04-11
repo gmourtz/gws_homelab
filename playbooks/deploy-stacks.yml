@@ -11,7 +11,7 @@
 #   ansible-playbook playbooks/deploy-stacks.yml --limit optiplex
 
 - name: Deploy stacks
-  hosts: all:!routers
+  hosts: all:!routers:!services
   become: true
   gather_facts: true
 
@@ -156,7 +156,7 @@
 #   python -m pip install 'uptime-kuma-api>=1.2.0,<2.0.0'
 # -----------------------------------------------------------------------
 - name: Configure Uptime Kuma monitors and notifications
-  hosts: localhost
+  hosts: uptime_kuma
   connection: local
   gather_facts: false
   become: false
@@ -180,6 +180,16 @@
       api_url: "{{ kuma_api_url }}"
       api_username: "{{ vault_uptime_kuma_admin_user | default(omit) }}"
       api_password: "{{ vault_uptime_kuma_admin_password | default(omit) }}"
+    lucasheld.uptime_kuma.tag:
+      api_url: "{{ kuma_api_url }}"
+      api_username: "{{ vault_uptime_kuma_admin_user | default(omit) }}"
+      api_password: "{{ vault_uptime_kuma_admin_password | default(omit) }}"
+      api_wait_events: 2
+    lucasheld.uptime_kuma.monitor_tag:
+      api_url: "{{ kuma_api_url }}"
+      api_username: "{{ vault_uptime_kuma_admin_user | default(omit) }}"
+      api_password: "{{ vault_uptime_kuma_admin_password | default(omit) }}"
+      api_wait_events: 2
 
   tasks:
     - name: Wait for Uptime Kuma HTTP API to be ready
@@ -238,6 +248,11 @@
       loop: "{{ proxy_services }}"
       loop_control:
         label: "{{ item.name }}"
+        pause: 5
+      register: tag_result
+      retries: 5
+      delay: 15
+      until: tag_result is not failed
       when: kuma_enabled
 
     - name: Add HTTP monitors for on-demand services
@@ -264,6 +279,11 @@
       loop: "{{ ondemand_services }}"
       loop_control:
         label: "{{ item.name }}"
+        pause: 5
+      register: tag_result
+      retries: 5
+      delay: 15
+      until: tag_result is not failed
       when: kuma_enabled
 
     - name: Add TCP port 22 monitors for hosts (SSH reachability)
@@ -291,4 +311,9 @@
       loop: "{{ dns_records }}"
       loop_control:
         label: "{{ item.name }}"
+        pause: 5
+      register: tag_result
+      retries: 5
+      delay: 15
+      until: tag_result is not failed
       when: kuma_enabled
