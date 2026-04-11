@@ -9,7 +9,9 @@ help: ## Show this help
 setup: ## Install Ansible + dependencies
 	brew install ansible || true
 	ansible-galaxy install -r requirements.yml
-	pip install uptime-kuma-api
+	# uptime-kuma-api is the Python dep for the lucasheld.uptime_kuma collection.
+	# Must install into Ansible's own bundled Python (Homebrew isolates it from the system Python).
+	`ansible --version | awk '/python version/{print $$NF}' | tr -d '()'` -m pip install --quiet --upgrade 'uptime-kuma-api>=1.2.0,<2.0.0'
 
 ping: ## Test SSH to all hosts
 	ansible all:!routers -m ping
