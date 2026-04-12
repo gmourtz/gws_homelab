@@ -1,7 +1,7 @@
 ---
 - Media:
     - Jellyfin:
-        href: http://jellyfin.{{ local_domain }}/
+        href: https://jellyfin.{{ local_domain }}/
         icon: jellyfin.png
         description: Media server
         server: optiplex
@@ -16,7 +16,7 @@
           fields: ["movies", "series", "songs"]
 
     - Audiobookshelf:
-        href: http://audiobookshelf.{{ local_domain }}/
+        href: https://audiobookshelf.{{ local_domain }}/
         icon: audiobookshelf.png
         description: Audiobooks & podcasts
         server: optiplex
@@ -28,14 +28,14 @@
           fields: ["books", "podcasts", "podcastEpisodes"]
 
     - Immich:
-        href: http://immich.{{ local_domain }}/
+        href: https://immich.{{ local_domain }}/
         icon: immich.png
         description: Photo management
         server: optiplex
         container: immich-server
 
     - Jellyseerr:
-        href: http://jellyseerr.{{ local_domain }}/
+        href: https://jellyseerr.{{ local_domain }}/
         icon: jellyseerr.png
         description: Media requests
         server: optiplex
@@ -48,7 +48,7 @@
 
 - Monitoring:
     - optiplex:
-        href: http://beszel.{{ local_domain }}/
+        href: https://beszel.{{ local_domain }}/
         icon: beszel.png
         description: i5-6500T · 6GB RAM · 240GB SSD
         server: optiplex
@@ -63,7 +63,7 @@
           fields: ["cpu", "memory", "disk", "network"]
 
     - rpi3:
-        href: http://beszel.{{ local_domain }}/
+        href: https://beszel.{{ local_domain }}/
         icon: beszel.png
         description: Raspberry Pi 3 B+ · 906MB RAM
         widget:
@@ -76,7 +76,7 @@
           fields: ["cpu", "memory", "disk", "network"]
 
     - openclaw:
-        href: http://beszel.{{ local_domain }}/
+        href: https://beszel.{{ local_domain }}/
         icon: beszel.png
         description: Lenovo · i5-8265U · 8GB RAM
         widget:
@@ -89,7 +89,7 @@
           fields: ["cpu", "memory", "disk", "network"]
 
     - Uptime Kuma:
-        href: http://uptime-kuma.{{ local_domain }}/
+        href: https://uptime-kuma.{{ local_domain }}/
         icon: uptime-kuma.png
         description: Service uptime monitoring
         server: optiplex
@@ -110,7 +110,7 @@
 
 - Tools:
     - Paperless:
-        href: http://paperless.{{ local_domain }}/
+        href: https://paperless.{{ local_domain }}/
         icon: paperless-ngx.png
         description: Document management
         server: optiplex
@@ -123,28 +123,28 @@
           fields: ["total", "inbox"]
 
     - Stirling PDF:
-        href: http://stirling-pdf.{{ local_domain }}/
+        href: https://stirling-pdf.{{ local_domain }}/
         icon: stirling-pdf.png
         description: PDF tools
         server: optiplex
         container: stirling-pdf
 
     - IT Tools:
-        href: http://it-tools.{{ local_domain }}/
+        href: https://it-tools.{{ local_domain }}/
         icon: it-tools.png
         description: Developer utilities
         server: optiplex
         container: it-tools
 
     - Draw.io:
-        href: http://drawio.{{ local_domain }}/
+        href: https://drawio.{{ local_domain }}/
         icon: drawio.png
         description: Diagrams
         server: optiplex
         container: drawio
 
     - Actual Budget:
-        href: http://actual-budget.{{ local_domain }}/
+        href: https://actual-budget.{{ local_domain }}/
         icon: actual-budget.png
         description: Personal finance
         server: optiplex
@@ -152,14 +152,14 @@
 
 - Downloads:
     - YouTube Videos:
-        href: http://jellyfin.{{ local_domain }}/
+        href: https://jellyfin.{{ local_domain }}/
         icon: youtube.png
         description: Video playlist sync
         server: optiplex
         container: youtube-video-downloader
 
     - YouTube Music:
-        href: http://jellyfin.{{ local_domain }}/
+        href: https://jellyfin.{{ local_domain }}/
         icon: youtube.png
         description: Music playlist sync (FLAC)
         server: optiplex
@@ -180,15 +180,14 @@
           fields: ["status", "origin_ip"]
 
     - Dozzle:
-        href: http://dozzle.{{ local_domain }}/
+        href: https://dozzle.{{ local_domain }}/
         icon: dozzle.png
         description: Container logs
         server: optiplex
         container: dozzle
 
     - Caddy:
-        href: http://optiplex.{{ local_domain }}/
         icon: caddy.png
-        description: Reverse proxy
+        description: Reverse proxy (no admin UI)
         server: optiplex
         container: caddy

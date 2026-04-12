@@ -228,7 +228,8 @@
       lucasheld.uptime_kuma.monitor:
         name: "{{ item.name }}"
         type: http
-        url: "http://{{ item.name }}.{{ local_domain }}/"
+        url: "https://{{ item.name }}.{{ local_domain }}/"
+        ignoreTls: true  # Caddy serves a self-signed internal CA cert
         interval: 60
         retryInterval: 20
         maxretries: 2
@@ -259,7 +260,8 @@
       lucasheld.uptime_kuma.monitor:
         name: "{{ item.name }}"
         type: http
-        url: "http://{{ item.name }}.{{ local_domain }}/"
+        url: "https://{{ item.name }}.{{ local_domain }}/"
+        ignoreTls: true  # Caddy serves a self-signed internal CA cert
         interval: 60
         retryInterval: 20
         maxretries: 2

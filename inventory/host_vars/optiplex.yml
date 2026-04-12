@@ -29,6 +29,9 @@ ufw_extra_rules:
   # Caddy reverse proxy (serves beszel, jellyfin, etc.)
   - { port: "80",  proto: tcp, src: "192.168.10.0/24" }
   - { port: "80",  proto: tcp, src: "100.64.0.0/10" }  # Tailscale clients
+  # Caddy HTTPS (tls internal self-signed CA — required by Safari for SharedArrayBuffer / secure context)
+  - { port: "443", proto: tcp, src: "192.168.10.0/24" }
+  - { port: "443", proto: tcp, src: "100.64.0.0/10" }  # Tailscale clients
 
 # Tailscale — advertise LAN subnet so remote clients can reach 192.168.10.0/24
 tailscale_advertise_routes:

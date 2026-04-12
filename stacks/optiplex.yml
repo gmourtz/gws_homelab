@@ -1,9 +1,18 @@
 configs:
   caddyfile:
     content: |
-      # HTTP reverse proxy — auto-generated from proxy_services variable
+      # HTTPS reverse proxy with internal CA — auto-generated from proxy_services + ondemand_services
+      # Caddy issues self-signed certs from its own CA (stored in /data/caddy/pki/authorities/local/)
+      # Clients must trust the root CA once; see docs for the one-time macOS trust step.
+
+      # Catch-all HTTP → HTTPS redirect for all *.{{ local_domain }} hosts
+      http://*.{{ local_domain }} {
+        redir https://{host}{uri} permanent
+      }
+
 {% for svc in proxy_services %}
-      http://{{ svc.name }}.{{ local_domain }} {
+      https://{{ svc.name }}.{{ local_domain }} {
+        tls internal
         reverse_proxy {{ svc.upstream }}
 {% if svc.extra_headers is defined %}
         header {
@@ -15,7 +24,8 @@ configs:
       }
 {% endfor %}
 {% for svc in ondemand_services | default([]) %}
-      http://{{ svc.name }}.{{ local_domain }} {
+      https://{{ svc.name }}.{{ local_domain }} {
+        tls internal
         route /* {
           sablier http://sablier:10000 {
             group {{ svc.group }}
@@ -56,6 +66,9 @@ services:
       - actual-budget-net
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
     configs:
       - source: caddyfile
         target: /etc/caddy/Caddyfile
@@ -592,6 +605,7 @@ networks:
     driver: bridge
 
 volumes:
+  caddy-data:
   beszel-data:
   jellyfin-config:
   jellyfin-cache:

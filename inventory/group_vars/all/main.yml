@@ -55,12 +55,7 @@ proxy_services:
   - { name: paperless,     upstream: "paperless-ngx:8000",    tag: tools          }
   - { name: immich,        upstream: "immich-server:2283",    tag: media          }
   - { name: uptime-kuma,   upstream: "uptime-kuma:3001",      tag: monitoring     }
-  - name: actual-budget
-    upstream: "actual-budget:5006"
-    tag: tools
-    extra_headers:
-      Cross-Origin-Opener-Policy: "same-origin"
-      Cross-Origin-Embedder-Policy: "require-corp"
+  - { name: actual-budget, upstream: "actual-budget:5006", tag: tools }
 
 # On-demand services managed by Sablier (auto start on request, auto stop after idle)
 # - name: DNS alias (must exist in dns_records aliases)
