@@ -162,7 +162,8 @@
   become: false
 
   vars:
-    kuma_api_url: "http://uptime-kuma.{{ local_domain }}"
+    # HTTPS via Caddy's self-signed internal CA — api_ssl_verify/validate_certs disabled below
+    kuma_api_url: "https://uptime-kuma.{{ local_domain }}"
     kuma_enabled: "{{ vault_uptime_kuma_telegram_bot_token is defined }}"
     kuma_tag_colors:
       media:          "#3b82f6"   # blue
@@ -176,26 +177,31 @@
       api_url: "{{ kuma_api_url }}"
       api_username: "{{ vault_uptime_kuma_admin_user | default(omit) }}"
       api_password: "{{ vault_uptime_kuma_admin_password | default(omit) }}"
+      api_ssl_verify: false
     lucasheld.uptime_kuma.notification:
       api_url: "{{ kuma_api_url }}"
       api_username: "{{ vault_uptime_kuma_admin_user | default(omit) }}"
       api_password: "{{ vault_uptime_kuma_admin_password | default(omit) }}"
+      api_ssl_verify: false
     lucasheld.uptime_kuma.tag:
       api_url: "{{ kuma_api_url }}"
       api_username: "{{ vault_uptime_kuma_admin_user | default(omit) }}"
       api_password: "{{ vault_uptime_kuma_admin_password | default(omit) }}"
       api_wait_events: 2
+      api_ssl_verify: false
     lucasheld.uptime_kuma.monitor_tag:
       api_url: "{{ kuma_api_url }}"
       api_username: "{{ vault_uptime_kuma_admin_user | default(omit) }}"
       api_password: "{{ vault_uptime_kuma_admin_password | default(omit) }}"
       api_wait_events: 2
+      api_ssl_verify: false
 
   tasks:
     - name: Wait for Uptime Kuma HTTP API to be ready
       ansible.builtin.uri:
         url: "{{ kuma_api_url }}"
         status_code: [200, 302]
+        validate_certs: false
       register: kuma_check
       until: kuma_check.status in [200, 302]
       retries: 30
