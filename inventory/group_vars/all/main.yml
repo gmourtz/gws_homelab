@@ -36,7 +36,7 @@ local_domain: internal
 # - name: the primary hostname (typically the inventory hostname)
 # - aliases: optional service names that resolve to the same IP
 dns_records:
-  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, paperless, immich, uptime-kuma, actual-budget] }
+  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, paperless, immich, uptime-kuma, actual-budget, navidrome] }
   - { name: rpi3,     ip: "192.168.10.10", tag: hosts, aliases: [pihole] }
   - { name: openclaw, ip: "192.168.40.30", tag: hosts }
 
@@ -56,6 +56,7 @@ proxy_services:
   - { name: immich,        upstream: "immich-server:2283",    tag: media          }
   - { name: uptime-kuma,   upstream: "uptime-kuma:3001",      tag: monitoring     }
   - { name: actual-budget, upstream: "actual-budget:5006", tag: tools }
+  - { name: navidrome,     upstream: "navidrome:4533",     tag: media }
 
 # On-demand services managed by Sablier (auto start on request, auto stop after idle)
 # - name: DNS alias (must exist in dns_records aliases)

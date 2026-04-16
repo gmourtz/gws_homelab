@@ -279,7 +279,6 @@
     - name: Update Tailscale advertised routes
       ansible.builtin.command: >-
         tailscale set
-        --advertise-tags=tag:gws-homelab
         --advertise-routes={{ tailscale_advertise_routes | join(',') }}
       when:
         - tailscale_enabled | default(true)

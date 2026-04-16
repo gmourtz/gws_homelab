@@ -64,6 +64,7 @@ services:
       - immich-net
       - uptime-kuma-net
       - actual-budget-net
+      - navidrome-net
     ports:
       - "80:80"
       - "443:443"
@@ -428,6 +429,30 @@ services:
       timeout: 5s
       retries: 3
 
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    restart: unless-stopped
+    networks:
+      - navidrome-net
+    environment:
+      ND_LOGLEVEL: info
+      ND_SCANSCHEDULE: "1h"
+      ND_SESSIONTIMEOUT: "24h"
+      ND_BASEURL: ""
+      ND_ENABLEEXTERNALSERVICES: "true"
+    volumes:
+      - navidrome-data:/data
+      - /mnt/media/music:/music/playlist:ro
+      - /mnt/media/music-inbox:/music/inbox:ro
+    mem_limit: 256m
+    cpus: "0.5"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4533/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   jellyfin:
     image: jellyfin/jellyfin:latest
     container_name: jellyfin
@@ -603,6 +628,8 @@ networks:
     driver: bridge
   actual-budget-net:
     driver: bridge
+  navidrome-net:
+    driver: bridge
 
 volumes:
   caddy-data:
@@ -623,4 +650,5 @@ volumes:
   uptime-kuma-data:
   actual-budget-data:
   portfolio-data:
+  navidrome-data:
 

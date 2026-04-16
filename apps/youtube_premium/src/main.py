@@ -133,7 +133,15 @@ def download_video(video_id):
             video_url,
         ]
         if AUDIO_ONLY:
-            cmd.extend(["--extract-audio", "--audio-format", AUDIO_FORMAT, "--audio-quality", "0"])
+            cmd.extend([
+                "--extract-audio",
+                "--audio-format", AUDIO_FORMAT,
+                "--audio-quality", "0",
+                "--embed-metadata",
+                "--embed-thumbnail",
+                "--parse-metadata", "uploader:%(artist)s",
+                "--parse-metadata", "title:%(title)s",
+            ])
         else:
             cmd.extend(["-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", "--merge-output-format", "mp4"])
 
