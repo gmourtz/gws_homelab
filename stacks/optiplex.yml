@@ -191,7 +191,7 @@ services:
       PLAYLIST_ID: PLZskJ7oz20HeEDddmsJymvg2TdwnpThug
       VIDEOS_DIR: /videos
       TOKEN_FILE: token.json
-      POLL_INTERVAL: "300"
+      POLL_INTERVAL: "60"
       AUDIO_ONLY: "true"
       AUDIO_FORMAT: flac
       STATE_FILE_NAME: .downloaded_music.log
