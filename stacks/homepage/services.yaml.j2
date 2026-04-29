@@ -172,6 +172,48 @@
         server: optiplex
         container: youtube-music-downloader
 
+    - qBittorrent:
+        href: https://qbittorrent.{{ local_domain }}/
+        icon: qbittorrent.png
+        description: BitTorrent client (via Mullvad VPN)
+        server: optiplex
+        container: qbittorrent
+
+    - Radarr:
+        href: https://radarr.{{ local_domain }}/
+        icon: radarr.png
+        description: Movie acquisition
+        server: optiplex
+        container: radarr
+
+    - Sonarr:
+        href: https://sonarr.{{ local_domain }}/
+        icon: sonarr.png
+        description: TV show acquisition
+        server: optiplex
+        container: sonarr
+
+    - Prowlarr:
+        href: https://prowlarr.{{ local_domain }}/
+        icon: prowlarr.png
+        description: Indexer manager
+        server: optiplex
+        container: prowlarr
+
+    - Lidarr:
+        href: https://lidarr.{{ local_domain }}/
+        icon: lidarr.png
+        description: Music acquisition
+        server: optiplex
+        container: lidarr
+
+    - Bazarr:
+        href: https://bazarr.{{ local_domain }}/
+        icon: bazarr.png
+        description: Subtitle management
+        server: optiplex
+        container: bazarr
+
 - Infrastructure:
     - Cloudflare Tunnel:
         href: https://dash.cloudflare.com/

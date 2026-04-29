@@ -17,6 +17,13 @@ data_dirs:
   - audiobooks
   - paperless-consume        # drop folder for Paperless-ngx auto-import
   - photos                   # Immich photo/video upload library
+  - torrents                 # qBittorrent download root
+  - torrents/movies
+  - torrents/tv
+  - torrents/music
+  - movies                   # Radarr library (hardlinks from torrents/movies)
+  - tv                       # Sonarr library (hardlinks from torrents/tv)
+  - music/lidarr             # Lidarr music (separate from YouTube music playlist)
 
 # Host-specific packages (extends group_vars packages list)
 extra_packages:
@@ -26,7 +33,7 @@ extra_packages:
 ufw_extra_rules:
   # Beszel agent (LAN + Docker bridge so hub can reach agent on same host)
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }
-  - { port: "45876", proto: tcp, src: "172.16.0.0/12" }
+  - { port: "45876", proto: tcp, src: "10.10.0.0/16" }
   # Caddy reverse proxy (serves beszel, jellyfin, etc.)
   - { port: "80",  proto: tcp, src: "192.168.10.0/24" }
   - { port: "80",  proto: tcp, src: "100.64.0.0/10" }  # Tailscale clients

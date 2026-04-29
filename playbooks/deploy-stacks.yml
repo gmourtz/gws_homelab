@@ -72,6 +72,16 @@
       when: inventory_hostname == 'optiplex'
       notify: Restart homepage
 
+    # --- Jellyseerr volume ownership (optiplex only) ---
+    - name: Fix Jellyseerr config volume ownership
+      ansible.builtin.file:
+        path: /var/lib/docker/volumes/stacks_jellyseerr-config/_data
+        state: directory
+        owner: "1000"
+        group: "1000"
+        recurse: true
+      when: inventory_hostname == 'optiplex'
+
     # --- Jellyfin post-deploy config (optiplex only) ---
     - name: Ensure Jellyfin config directory exists in volume
       ansible.builtin.file:
@@ -94,6 +104,52 @@
       loop: "{{ pihole_allowlist }}"
       when: pihole_allowlist is defined
       changed_when: false
+
+    # --- gluetun routing fix (optiplex only) ---
+    # gluetun's ip rule 100 matches ALL traffic from the shared container IP
+    # (every container in network_mode:service:gluetun shares gluetun's IP).
+    # This routes arr/qBittorrent traffic to eth0 where the kill-switch blocks it.
+    # Fix: replace rule 100 with a fwmark-conditional version so only gluetun's
+    # own process (fwmark 0xca6c) goes via eth0 to reach the VPN server, while
+    # all unmarked traffic (qBittorrent, arr containers) routes through tun0 (VPN tunnel).
+    - name: Fix gluetun ip routing so arr containers route through VPN tunnel
+      ansible.builtin.shell: |
+        # Wait up to 5 min for gluetun to initialise its routing tables
+        for i in $(seq 1 30); do
+          docker exec gluetun ip rule list > /dev/null 2>&1 && break
+          sleep 10
+        done
+
+        # Idempotency: already fixed when rule 100 has 'not fwmark'
+        if docker exec gluetun ip rule list 2>/dev/null | grep -qE '^[[:space:]]*100:[[:space:]].*not.*fwmark'; then
+          echo "already_fixed"
+          exit 0
+        fi
+
+        # Get the lookup table used by the current rule 100 (typically 200 → eth0)
+        ETH0_TABLE=$(docker exec gluetun ip rule list 2>/dev/null | \
+          awk '/^[[:space:]]*100:/{for(i=1;i<=NF;i++){if($i=="lookup"){print $(i+1); exit}}}')
+        ETH0_TABLE=${ETH0_TABLE:-200}
+
+        # Remove the rule that incorrectly routes ALL container traffic to eth0
+        docker exec gluetun ip rule del priority 100 2>/dev/null || true
+
+        # Re-add with fwmark condition: only gluetun's own traffic goes to eth0 → VPN server
+        docker exec gluetun ip rule add fwmark 0xca6c lookup "$ETH0_TABLE" priority 200 || true
+
+        # All unmarked traffic (arr containers, qBittorrent) → table 51820 → tun0 → VPN tunnel
+        docker exec gluetun ip rule add not fwmark 0xca6c lookup 51820 priority 100
+
+        # Allow tun0-bound traffic through gluetun's iptables kill-switch
+        docker exec gluetun iptables -C OUTPUT -o tun0 -j ACCEPT 2>/dev/null || \
+          docker exec gluetun iptables -I OUTPUT 1 -o tun0 -j ACCEPT
+
+        echo "changed"
+      args:
+        executable: /bin/bash
+      register: _gluetun_route_fix
+      changed_when: '"changed" in _gluetun_route_fix.stdout'
+      when: inventory_hostname == 'optiplex'
 
     # --- OpenClaw post-deploy config (openclaw host only) ---
     - name: Get Tailscale FQDN for openclaw config
@@ -171,6 +227,7 @@
       monitoring:     "#f97316"   # orange
       infrastructure: "#8b5cf6"   # purple
       hosts:          "#ec4899"   # pink
+      downloads:      "#f59e0b"   # amber
 
   module_defaults:
     lucasheld.uptime_kuma.monitor:
@@ -244,6 +301,7 @@
       loop: "{{ proxy_services }}"
       loop_control:
         label: "{{ item.name }}"
+        pause: 3
       when: kuma_enabled
       no_log: true
 

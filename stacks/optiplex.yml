@@ -65,6 +65,7 @@ services:
       - uptime-kuma-net
       - actual-budget-net
       - navidrome-net
+      - arr-net
     ports:
       - "80:80"
       - "443:443"
@@ -114,6 +115,8 @@ services:
       NETWORKS: 1
       VOLUMES: 1
       INFO: 1
+      EVENTS: 1
+      STATS: 1
     ports:
       - "127.0.0.1:2375:2375"
     healthcheck:
@@ -229,6 +232,185 @@ services:
   #     timeout: 5s
   #     retries: 3
 
+  # --- Arr media automation ---
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      - arr-net
+    environment:
+      VPN_SERVICE_PROVIDER: mullvad
+      VPN_TYPE: wireguard
+      WIREGUARD_PRIVATE_KEY: "{{ vault_mullvad_wg_private_key }}"
+      WIREGUARD_ADDRESSES: "{{ vault_mullvad_wg_addresses }}"
+      SERVER_COUNTRIES: Netherlands
+      TZ: "{{ timezone }}"
+      FIREWALL_INPUT_PORTS: "8080,9696,7878,8989,8686,6767,6881"
+      FIREWALL_OUTBOUND_SUBNETS: "10.10.0.0/16,172.16.0.0/12"
+      HEALTH_VPN_DURATION_INITIAL: "120s"
+      WIREGUARD_MTU: "1380"
+    healthcheck:
+      test: ["CMD", "/gluetun-entrypoint", "healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "{{ timezone }}"
+      WEBUI_PORT: "8080"
+    volumes:
+      - qbittorrent-config:/config
+      - /mnt/media:/data
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "{{ timezone }}"
+    volumes:
+      - prowlarr-config:/config
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9696/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "{{ timezone }}"
+    volumes:
+      - radarr-config:/config
+      - /mnt/media:/data
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7878/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "{{ timezone }}"
+    volumes:
+      - sonarr-config:/config
+      - /mnt/media:/data
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8989/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "{{ timezone }}"
+    volumes:
+      - lidarr-config:/config
+      - /mnt/media:/data
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8686/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "{{ timezone }}"
+    volumes:
+      - bazarr-config:/config
+      - /mnt/media:/data
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:6767/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      TZ: "{{ timezone }}"
+      LOG_LEVEL: info
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8191/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # --- Personal website ---
   georgios-website:
     image: ghcr.io/gmourtz/georgios-website:latest
@@ -261,6 +443,21 @@ services:
       retries: 3
 
   # --- Docker log viewer ---
+  dozzle-agent:
+    image: amir20/dozzle:latest
+    container_name: dozzle-agent
+    command: agent
+    restart: unless-stopped
+    networks:
+      - docker-proxy-net
+    environment:
+      DOCKER_HOST: "tcp://docker-socket-proxy:2375"
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   dozzle:
     image: amir20/dozzle:latest
     container_name: dozzle
@@ -269,9 +466,8 @@ services:
       - dozzle-net
       - docker-proxy-net
     environment:
-      DOCKER_HOST: "tcp://docker-socket-proxy:2375"
       DOZZLE_HOSTNAME: "optiplex"
-      DOZZLE_REMOTE_AGENT: "rpi3.{{ local_domain }}:7007,openclaw.{{ local_domain }}:7007"
+      DOZZLE_REMOTE_AGENT: "dozzle-agent:7007,rpi3.{{ local_domain }}:7007,openclaw.{{ local_domain }}:7007"
     healthcheck:
       test: ["CMD", "/dozzle", "healthcheck"]
       interval: 30s
@@ -286,6 +482,7 @@ services:
     networks:
       - jellyseerr-net
       - jellyfin-net
+      - arr-net
     volumes:
       - jellyseerr-config:/app/config
     environment:
@@ -402,6 +599,7 @@ services:
       - immich-net
       - uptime-kuma-net
       - actual-budget-net
+      - arr-net
     volumes:
       - homepage-config:/app/config
     environment:
@@ -468,6 +666,8 @@ services:
       - jellyfin-cache:/cache
       - /mnt/media/videos:/media/videos:ro
       - /mnt/media/music:/media/music:ro
+      - /mnt/media/movies:/media/movies:ro
+      - /mnt/media/tv:/media/tv:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8096/health || exit 1"]
       interval: 30s
@@ -564,7 +764,7 @@ services:
     volumes:
       - actual-budget-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:5006/ || exit 1"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:5006/',r=>process.exit(r.statusCode<500?0:1))\" || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -630,6 +830,8 @@ networks:
     driver: bridge
   navidrome-net:
     driver: bridge
+  arr-net:
+    driver: bridge
 
 volumes:
   caddy-data:
@@ -651,4 +853,10 @@ volumes:
   actual-budget-data:
   portfolio-data:
   navidrome-data:
+  qbittorrent-config:
+  prowlarr-config:
+  radarr-config:
+  sonarr-config:
+  lidarr-config:
+  bazarr-config:
 
