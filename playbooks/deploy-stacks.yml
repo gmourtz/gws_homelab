@@ -88,6 +88,44 @@
       when: inventory_hostname == 'optiplex'
       notify: Restart homepage
 
+    # --- qBittorrent first-run init (optiplex only) ---
+    # Templates qBittorrent.conf and categories.json into the volume *only if absent*.
+    # On a fresh deploy this means qBittorrent boots with the vault password, save paths,
+    # and categories already set — no manual UI setup. On an existing deploy this is a
+    # no-op (the files already exist), so user UI tweaks are preserved.
+    - name: Ensure qBittorrent config dir exists in volume
+      ansible.builtin.file:
+        path: /var/lib/docker/volumes/stacks_qbittorrent-config/_data/qBittorrent
+        state: directory
+        owner: "1000"
+        group: "1000"
+        mode: "0755"
+      when: inventory_hostname == 'optiplex'
+
+    - name: Initialise qBittorrent.conf on first run
+      ansible.builtin.template:
+        src: "{{ stacks_src }}/qbittorrent.conf.j2"
+        dest: /var/lib/docker/volumes/stacks_qbittorrent-config/_data/qBittorrent/qBittorrent.conf
+        owner: "1000"
+        group: "1000"
+        mode: "0640"
+        force: false  # only write if file doesn't exist — preserves user UI tweaks
+      when:
+        - inventory_hostname == 'optiplex'
+        - vault_qbittorrent_password_hash is defined
+
+    - name: Initialise qBittorrent categories.json on first run
+      ansible.builtin.template:
+        src: "{{ stacks_src }}/qbittorrent-categories.json.j2"
+        dest: /var/lib/docker/volumes/stacks_qbittorrent-config/_data/qBittorrent/categories.json
+        owner: "1000"
+        group: "1000"
+        mode: "0640"
+        force: false
+      when:
+        - inventory_hostname == 'optiplex'
+        - qbittorrent_categories is defined
+
     # --- Jellyseerr volume ownership (optiplex only) ---
     - name: Fix Jellyseerr config volume ownership
       ansible.builtin.file:
