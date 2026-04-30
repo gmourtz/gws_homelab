@@ -494,6 +494,28 @@ services:
       timeout: 5s
       retries: 3
 
+  musicseerr:
+    image: ghcr.io/habirabbu/musicseerr:latest
+    container_name: musicseerr
+    restart: unless-stopped
+    networks:
+      - arr-net
+      - navidrome-net
+    volumes:
+      - musicseerr-config:/app/config
+      - musicseerr-cache:/app/cache
+      - /mnt/media/music:/music:ro
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "{{ timezone }}"
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8688/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # --- Document management ---
   paperless-redis:
     image: redis:7-alpine
@@ -640,6 +662,12 @@ services:
       ND_SESSIONTIMEOUT: "24h"
       ND_BASEURL: ""
       ND_ENABLEEXTERNALSERVICES: "true"
+      ND_PLUGINS_ENABLED: "true"
+      ND_PLUGINS_AUTORELOAD: "true"
+{% if vault_lastfm_apikey is defined %}
+      ND_LASTFM_APIKEY: "{{ vault_lastfm_apikey }}"
+      ND_LASTFM_SECRET: "{{ vault_lastfm_secret }}"
+{% endif %}
     volumes:
       - navidrome-data:/data
       - /mnt/media/music:/music/playlist:ro
@@ -860,4 +888,6 @@ volumes:
   sonarr-config:
   lidarr-config:
   bazarr-config:
+  musicseerr-config:
+  musicseerr-cache:
 

@@ -35,6 +35,7 @@
         owner: "{{ admin_user }}"
         group: "{{ admin_user }}"
         mode: "0600"
+      register: compose_template
 
     - name: Log in to GHCR
       community.docker.docker_login:
@@ -50,6 +51,21 @@
         pull: always
         state: present
         remove_orphans: true
+
+    # The Caddyfile is embedded in the compose file via `configs:`, so changing
+    # proxy_services or ondemand_services only changes file content — no service
+    # block changes. Compose's auto-recreate doesn't detect this, so Caddy keeps
+    # serving the stale config. Force-recreate only when the compose file changed.
+    - name: Force-recreate Caddy to pick up Caddyfile content changes
+      community.docker.docker_compose_v2:
+        project_src: "{{ stacks_dest }}"
+        services:
+          - caddy
+        state: present
+        recreate: always
+      when:
+        - inventory_hostname == 'optiplex'
+        - compose_template.changed
 
     # --- Homepage config (optiplex only) ---
     - name: Ensure Homepage config directory exists in volume
@@ -81,6 +97,28 @@
         group: "1000"
         recurse: true
       when: inventory_hostname == 'optiplex'
+
+    # --- Navidrome plugins (optiplex only) ---
+    # Plugins land in the navidrome-data volume; ND_PLUGINS_AUTORELOAD picks them up
+    # without a restart. After install, enable them via the web UI (Profile → Plugins).
+    - name: Ensure Navidrome plugins directory exists in volume
+      ansible.builtin.file:
+        path: /var/lib/docker/volumes/stacks_navidrome-data/_data/plugins
+        state: directory
+        mode: "0755"
+      when: inventory_hostname == 'optiplex'
+
+    - name: Download Navidrome plugins
+      ansible.builtin.get_url:
+        url: "{{ item.url }}"
+        dest: "/var/lib/docker/volumes/stacks_navidrome-data/_data/plugins/{{ item.name }}.ndp"
+        mode: "0644"
+      loop: "{{ navidrome_plugins }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when:
+        - inventory_hostname == 'optiplex'
+        - navidrome_plugins is defined
 
     # --- Jellyfin post-deploy config (optiplex only) ---
     - name: Ensure Jellyfin config directory exists in volume

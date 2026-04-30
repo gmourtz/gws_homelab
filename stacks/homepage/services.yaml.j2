@@ -53,6 +53,13 @@
           key: {{ vault_homepage_jellyseerr_api_key }}
           fields: ["pending", "approved", "available"]
 
+    - MusicSeerr:
+        href: https://musicseerr.{{ local_domain }}/
+        icon: musicseerr.png
+        description: Music requests
+        server: optiplex
+        container: musicseerr
+
 - Monitoring:
     - optiplex:
         href: https://beszel.{{ local_domain }}/

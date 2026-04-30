@@ -37,7 +37,7 @@ local_domain: internal
 # - aliases: optional service names that resolve to the same IP
 dns_records:
   # TODO: enable when localllm — append 'chat' to optiplex.aliases below (Caddy on optiplex proxies chat.internal -> localllm.internal:8080)
-  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, paperless, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr] }
+  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, musicseerr, paperless, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr] }
   - { name: rpi3,     ip: "192.168.10.10", tag: hosts, aliases: [pihole] }
   - { name: openclaw, ip: "192.168.40.30", tag: hosts }
   # TODO: enable when localllm is physically connected
@@ -55,6 +55,7 @@ proxy_services:
   - { name: homepage,      upstream: "homepage:3000",         tag: infrastructure }
   - { name: dozzle,        upstream: "dozzle:8080",           tag: infrastructure }
   - { name: jellyseerr,    upstream: "jellyseerr:5055",       tag: media          }
+  - { name: musicseerr,    upstream: "musicseerr:8688",       tag: media          }
   - { name: paperless,     upstream: "paperless-ngx:8000",    tag: tools          }
   - { name: immich,        upstream: "immich-server:2283",    tag: media          }
   - { name: uptime-kuma,   upstream: "uptime-kuma:3001",      tag: monitoring     }
@@ -68,6 +69,15 @@ proxy_services:
   - { name: bazarr,       upstream: "gluetun:6767",       tag: downloads }
   # TODO: enable when localllm is physically connected
   # - { name: chat,         upstream: "localllm.internal:8080", tag: ai }   # Open WebUI on localllm
+
+# Navidrome plugins (downloaded by deploy-stacks.yml into the navidrome-data volume's plugins/ dir).
+# Pin to specific versions for reproducibility — bump when new versions are released.
+# After a fresh deploy: open https://navidrome.internal → Profile (top-right) → Plugins → enable each.
+navidrome_plugins:
+  - name: listenbrainz-daily-playlist
+    url: "https://github.com/kgarner7/navidrome-listenbrainz-daily-playlist/releases/download/v5.0.2/listenbrainz-daily-playlist.ndp"
+  - name: navidrome-lrclib
+    url: "https://github.com/kepelet/navidrome-lrclib-plugin/releases/download/0.1.0/navidrome-lrclib.ndp"
 
 # On-demand services managed by Sablier (auto start on request, auto stop after idle)
 # - name: DNS alias (must exist in dns_records aliases)
