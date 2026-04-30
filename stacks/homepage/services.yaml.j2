@@ -134,7 +134,7 @@
           type: pihole
           url: http://192.168.10.10
           version: 6
-          key: {{ vault_homepage_pihole_api_key }}
+          key: {{ vault_pihole_password }}
           fields: ["queries", "blocked", "blocked_percent", "gravity"]
 
 {# TODO: enable when localllm is physically connected — uncomment by removing this opening Jinja-comment line and the matching closer below
