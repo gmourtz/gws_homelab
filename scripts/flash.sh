@@ -31,6 +31,7 @@ usage() {
     echo "  $0 rpi      /dev/diskN   Flash RPi image to SD card"
     echo "  $0 optiplex /dev/diskN  Flash optiplex autoinstall ISO to USB stick"
     echo "  $0 openclaw /dev/diskN  Flash openclaw autoinstall ISO to USB stick"
+    echo "  $0 localllm /dev/diskN  Flash localllm autoinstall ISO to USB stick"
     echo ""
     echo "Workflow:"
     echo "  1. $0 download          # fetch base images"
@@ -206,5 +207,6 @@ case "$1" in
     rpi)       [[ $# -ne 2 ]] && usage; flash_rpi "$2" ;;
     optiplex)  [[ $# -ne 2 ]] && usage; flash_x86 optiplex "$2" ;;
     openclaw)  [[ $# -ne 2 ]] && usage; flash_x86 openclaw "$2" ;;
+    localllm)  [[ $# -ne 2 ]] && usage; flash_x86 localllm "$2" ;;
     *)         usage ;;
 esac

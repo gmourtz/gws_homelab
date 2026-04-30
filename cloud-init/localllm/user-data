@@ -1,0 +1,67 @@
+#cloud-config
+# ------------------------------------------------------------------
+# Autoinstall config for Dell OptiPlex Micro Plus 7010 (localllm)
+# Ubuntu 24.04 LTS — fully unattended install
+#
+# Hardware: i7-13700T, 16GB DDR5, 256GB NVMe
+# Role:     local LLM serving (Ollama + Open WebUI) on VLAN 10 Trusted
+#
+# Procedure:
+# 1. Build ISO:  ./scripts/build-iso.sh localllm
+# 2. Flash ISO:  ./scripts/flash.sh   localllm /dev/diskN
+# 3. Wipe Win 11: boot the OptiPlex from USB, autoinstall runs unattended (~5 min).
+# 4. Plug Ethernet into the MikroTik (VLAN 10 untagged port).
+# 5. After first boot: capture MAC from `ip -br link show | grep ' UP '`
+#    and add it to inventory/hosts.yml + inventory/host_vars/mikrotik.yml
+#    (search for `TODO: enable when localllm`).
+#
+# Network: DHCP only — MikroTik assigns 192.168.10.30 via static lease bound
+# to the captured MAC. Same pattern as rpi3.
+# ------------------------------------------------------------------
+
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  timezone: Europe/London
+  keyboard:
+    layout: us
+
+  identity:
+    hostname: localllm
+    username: gws
+    # Locked password — SSH key only (password auth is disabled via late-commands)
+    password: "$6$homelablocked$YZIe7O7AGvMm8yZ7ddnWARifGT/koTS3r4r1ylqTxl2oR9e8tvgAmw6s1lu2/LpRSm2.kXNlA5F/kenXKlN/l."
+
+  ssh:
+    install-server: true
+    authorized-keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjZb5ELR3VYw8eSNGTf9eAY8kqeA/LuRIhD8X/fzpup gws_homelab
+    allow-pw: false
+
+  storage:
+    layout:
+      name: direct  # Use entire 256GB NVMe (wipes Windows 11)
+
+  network:
+    version: 2
+    ethernets:
+      any-eth:
+        match:
+          name: en*
+        dhcp4: true
+
+  packages:
+    - python3
+    - openssh-server
+    - curl
+    - wget
+
+  late-commands:
+    # Passwordless sudo for gws
+    - echo 'gws ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/gws
+    - chmod 440 /target/etc/sudoers.d/gws
+    # Disable password auth in SSH
+    - sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /target/etc/ssh/sshd_config
+    - sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /target/etc/ssh/sshd_config
+    # 8GB swap file on NVMe — OOM insurance for tight LLM RAM budget on 16GB
+    - curtin in-target -- bash -c "fallocate -l 8G /swapfile && chmod 600 /swapfile && mkswap /swapfile && echo '/swapfile none swap sw 0 0' >> /etc/fstab"
