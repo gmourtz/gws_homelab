@@ -51,7 +51,6 @@ proxy_services:
   - { name: jellyfin,      upstream: "jellyfin:8096",         tag: media          }
   - { name: audiobookshelf, upstream: "audiobookshelf:80",    tag: media          }
   - { name: it-tools,      upstream: "it-tools:80",           tag: tools          }
-  - { name: drawio,        upstream: "drawio:8080",           tag: tools          }
   - { name: homepage,      upstream: "homepage:3000",         tag: infrastructure }
   - { name: dozzle,        upstream: "dozzle:8080",           tag: infrastructure }
   - { name: jellyseerr,    upstream: "jellyseerr:5055",       tag: media          }
@@ -93,3 +92,14 @@ navidrome_plugins:
 # - session_duration: how long the container stays up after last request
 ondemand_services:
   - { name: stirling-pdf, upstream: "stirling-pdf:8080", group: "stirling-pdf", session_duration: "30m", tag: tools }
+  - { name: drawio,       upstream: "drawio:8080",       group: "drawio",       session_duration: "30m", tag: tools }
+
+# Uptime Kuma monitors to remove — names of deprecated monitors that are no longer
+# in proxy_services / ondemand_services / dns_records but still exist in Kuma's
+# database. The cleanup task in deploy-stacks.yml deletes these by exact name.
+# For host SSH monitors (created from dns_records), include the "(ssh)" suffix.
+removed_kuma_monitors:
+  # Sablier-managed on-demand services — were polled every 60s by Kuma,
+  # keeping them permanently warm. Removed so they can actually go idle.
+  - stirling-pdf
+  - drawio

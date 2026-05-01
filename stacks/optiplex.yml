@@ -564,7 +564,9 @@ services:
   stirling-pdf:
     image: stirlingtools/stirling-pdf:latest
     container_name: stirling-pdf
-    restart: unless-stopped
+    # Sablier-managed on-demand. `restart: "no"` so Docker doesn't fight Sablier's stop —
+    # Sablier handles starts (on first request via Caddy) and stops (after idle timeout).
+    restart: "no"
     networks:
       - stirling-pdf-net
     volumes:
@@ -595,11 +597,15 @@ services:
   drawio:
     image: jgraph/drawio:latest
     container_name: drawio
-    restart: unless-stopped
+    # Sablier-managed on-demand. `restart: "no"` so Docker doesn't fight Sablier's stop.
+    restart: "no"
     networks:
       - drawio-net
     environment:
       DRAWIO_SELF_CONTAINED: "1"
+    labels:
+      sablier.enable: "true"
+      sablier.group: "drawio"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: 30s

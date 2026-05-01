@@ -67,6 +67,20 @@
         - inventory_hostname == 'optiplex'
         - compose_template.changed
 
+    # Sablier's `--provider.auto-stop-on-startup` only fires at Sablier's own boot.
+    # When `make stacks` recreates a Sablier-enabled container (stirling-pdf, drawio)
+    # while Sablier is already running, Sablier never auto-stops the new container —
+    # it sits idle indefinitely. Restart Sablier on compose change so its auto-stop
+    # sweep runs and idle on-demand containers go to sleep.
+    # (Plain `docker restart` is more reliable here than docker_compose_v2's
+    # `recreate: always` with a services filter, which silently no-ops in practice.)
+    - name: Restart Sablier to re-run auto-stop-on-startup sweep
+      ansible.builtin.command: docker restart sablier
+      changed_when: true
+      when:
+        - inventory_hostname == 'optiplex'
+        - compose_template.changed
+
     # --- Homepage config (optiplex only) ---
     - name: Ensure Homepage config directory exists in volume
       ansible.builtin.file:
@@ -341,6 +355,15 @@
       delay: 2
       when: kuma_enabled
 
+    - name: Remove deprecated Uptime Kuma monitors
+      lucasheld.uptime_kuma.monitor:
+        name: "{{ item }}"
+        state: absent
+      loop: "{{ removed_kuma_monitors | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      when: kuma_enabled
+
     - name: Add Telegram notification channel
       lucasheld.uptime_kuma.notification:
         name: telegram-homelab
@@ -396,37 +419,12 @@
       until: tag_result is not failed
       when: kuma_enabled
 
-    - name: Add HTTP monitors for on-demand services
-      lucasheld.uptime_kuma.monitor:
-        name: "{{ item.name }}"
-        type: http
-        url: "https://{{ item.name }}.{{ local_domain }}/"
-        ignoreTls: true  # Caddy serves a self-signed internal CA cert
-        interval: 60
-        retryInterval: 20
-        maxretries: 2
-        notification_names: ["telegram-homelab"]
-        state: present
-      loop: "{{ ondemand_services }}"
-      loop_control:
-        label: "{{ item.name }}"
-      when: kuma_enabled
-      no_log: true
-
-    - name: Tag on-demand service monitors
-      lucasheld.uptime_kuma.monitor_tag:
-        monitor_name: "{{ item.name }}"
-        tag_name: "{{ item.tag }}"
-        state: present
-      loop: "{{ ondemand_services }}"
-      loop_control:
-        label: "{{ item.name }}"
-        pause: 5
-      register: tag_result
-      retries: 5
-      delay: 15
-      until: tag_result is not failed
-      when: kuma_enabled
+    # Intentionally NOT monitored: on-demand services (Sablier-managed).
+    # An HTTP monitor that polls every 60s would keep them permanently warm via
+    # Caddy's Sablier middleware (each poll is a "request" → Sablier starts the
+    # container → 30 min session keeps it alive → next poll resets the timer).
+    # The whole point of on-demand is "off when idle"; monitoring breaks that.
+    # Add a manual smoke test (curl + ad-hoc) when you suspect they're broken.
 
     - name: Add TCP port 22 monitors for hosts (SSH reachability)
       lucasheld.uptime_kuma.monitor:
