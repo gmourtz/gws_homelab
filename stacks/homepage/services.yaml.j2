@@ -102,7 +102,6 @@
           version: 2
           fields: ["cpu", "memory", "disk", "network"]
 
-{# TODO: enable when localllm is physically connected — uncomment by removing this opening Jinja-comment line and the matching closer below
     - localllm:
         href: https://beszel.{{ local_domain }}/
         icon: beszel.png
@@ -115,7 +114,6 @@
           systemId: {{ vault_homepage_beszel_id_localllm }}
           version: 2
           fields: ["cpu", "memory", "disk", "network"]
-#}
 
     - Uptime Kuma:
         href: https://uptime-kuma.{{ local_domain }}/
@@ -137,7 +135,6 @@
           key: {{ vault_pihole_password }}
           fields: ["queries", "blocked", "blocked_percent", "gravity"]
 
-{# TODO: enable when localllm is physically connected — uncomment by removing this opening Jinja-comment line and the matching closer below
 - AI:
     - Open WebUI:
         href: https://chat.{{ local_domain }}/
@@ -152,7 +149,6 @@
         description: Local LLM API endpoint
         server: localllm
         container: ollama
-#}
 
 - Tools:
     - Paperless:

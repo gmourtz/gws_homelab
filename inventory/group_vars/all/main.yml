@@ -36,12 +36,10 @@ local_domain: internal
 # - name: the primary hostname (typically the inventory hostname)
 # - aliases: optional service names that resolve to the same IP
 dns_records:
-  # TODO: enable when localllm — append 'chat' to optiplex.aliases below (Caddy on optiplex proxies chat.internal -> localllm.internal:8080)
-  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, musicseerr, paperless, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr] }
+  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, musicseerr, paperless, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr, chat] }
   - { name: rpi3,     ip: "192.168.10.10", tag: hosts, aliases: [pihole] }
   - { name: openclaw, ip: "192.168.40.30", tag: hosts }
-  # TODO: enable when localllm is physically connected
-  # - { name: localllm, ip: "192.168.10.30", tag: hosts }
+  - { name: localllm, ip: "192.168.10.30", tag: hosts }
 
 # Services proxied by Caddy on optiplex (port 80, routed by Host header)
 # - name: DNS alias (must exist in dns_records aliases)
@@ -66,8 +64,7 @@ proxy_services:
   - { name: sonarr,       upstream: "gluetun:8989",       tag: downloads }
   - { name: lidarr,       upstream: "gluetun:8686",       tag: downloads }
   - { name: bazarr,       upstream: "gluetun:6767",       tag: downloads }
-  # TODO: enable when localllm is physically connected
-  # - { name: chat,         upstream: "localllm.internal:8080", tag: ai }   # Open WebUI on localllm
+  - { name: chat,         upstream: "localllm.internal:8080", tag: ai }   # Open WebUI on localllm
 
 # qBittorrent download categories — written to /config/qBittorrent/categories.json on first run only.
 # Used by Radarr/Sonarr/Lidarr to route downloads into separate folders.

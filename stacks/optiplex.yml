@@ -467,8 +467,7 @@ services:
       - docker-proxy-net
     environment:
       DOZZLE_HOSTNAME: "optiplex"
-      # TODO: enable when localllm is physically connected — append ",localllm.{{ local_domain }}:7007"
-      DOZZLE_REMOTE_AGENT: "dozzle-agent:7007,rpi3.{{ local_domain }}:7007,openclaw.{{ local_domain }}:7007"
+      DOZZLE_REMOTE_AGENT: "dozzle-agent:7007,rpi3.{{ local_domain }}:7007,openclaw.{{ local_domain }}:7007,localllm.{{ local_domain }}:7007"
     healthcheck:
       test: ["CMD", "/dozzle", "healthcheck"]
       interval: 30s
