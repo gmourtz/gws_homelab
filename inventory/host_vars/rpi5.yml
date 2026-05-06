@@ -1,0 +1,11 @@
+---
+# Host vars for rpi5
+
+# UFW extra rules — ports needed by stacks on this host
+ufw_extra_rules:
+  # Beszel agent
+  - { port: "45876", proto: tcp, src: "192.168.10.0/24" }
+  # Docker socket proxy (for homepage on optiplex)
+  - { port: "2375", proto: tcp, src: "192.168.10.20" }
+  # Dozzle agent (for dozzle on optiplex)
+  - { port: "7007", proto: tcp, src: "192.168.10.20" }

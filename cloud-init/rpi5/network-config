@@ -1,0 +1,7 @@
+# Network config for Raspberry Pi 5
+# Uses DHCP — MikroTik assigns 192.168.10.11 via static lease (MAC: 88:A2:9E:75:22:86)
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: true

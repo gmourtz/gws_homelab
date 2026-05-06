@@ -4,7 +4,8 @@
 #
 # Usage:
 #   ./scripts/flash.sh list                  # show external disks
-#   ./scripts/flash.sh rpi   /dev/diskN      # flash RPi SD card
+#   ./scripts/flash.sh rpi3  /dev/diskN      # flash RPi 3 SD card
+#   ./scripts/flash.sh rpi5  /dev/diskN      # flash RPi 5 SD card
 #   ./scripts/flash.sh optiplex /dev/diskN   # flash OptiPlex USB
 #   ./scripts/flash.sh download              # download both images
 #
@@ -28,16 +29,17 @@ usage() {
     echo "  $0 list                 Show external/removable disks"
     echo "  $0 download             Download OS images to ./images/"
     echo "  $0 build-iso <host>     Build autoinstall ISO (optiplex, openclaw)"
-    echo "  $0 rpi      /dev/diskN   Flash RPi image to SD card"
+    echo "  $0 rpi3     /dev/diskN  Flash RPi 3 image to SD card"
+    echo "  $0 rpi5     /dev/diskN  Flash RPi 5 image to SD card"
     echo "  $0 optiplex /dev/diskN  Flash optiplex autoinstall ISO to USB stick"
     echo "  $0 openclaw /dev/diskN  Flash openclaw autoinstall ISO to USB stick"
     echo "  $0 localllm /dev/diskN  Flash localllm autoinstall ISO to USB stick"
     echo ""
     echo "Workflow:"
-    echo "  1. $0 download          # fetch base images"
-    echo "  2. $0 build-iso <host>  # repack ISO with autoinstall (optiplex, openclaw)"
-    echo "  3. $0 list              # identify your SD/USB disk"
-    echo "  4. $0 rpi /dev/diskN    # flash RPi SD card"
+    echo "  1. $0 download             # fetch base images"
+    echo "  2. $0 build-iso <host>     # repack ISO with autoinstall (optiplex, openclaw)"
+    echo "  3. $0 list                 # identify your SD/USB disk"
+    echo "  4. $0 rpi3 /dev/diskN      # flash RPi 3 SD card (or rpi5 for the Pi 5)"
     echo "  5. $0 optiplex /dev/diskN  # flash OptiPlex USB"
     exit 1
 }
@@ -115,14 +117,20 @@ validate_disk() {
 }
 
 flash_rpi() {
-    local disk="$1"
+    local host="$1"        # rpi3 or rpi5 — also the cloud-init subdir name
+    local disk="$2"
     local rdisk="${disk/disk/rdisk}"  # use raw disk for speed
 
-    echo "==> Flashing RPi image to ${disk}..."
+    echo "==> Flashing ${host} image to ${disk}..."
 
     if [[ ! -f "${IMAGE_DIR}/${RPI_IMAGE}" ]]; then
         echo "ERROR: Image not found at ${IMAGE_DIR}/${RPI_IMAGE}"
         echo "Run: $0 download"
+        exit 1
+    fi
+
+    if [[ ! -d "${CLOUD_INIT_DIR}/${host}" ]]; then
+        echo "ERROR: cloud-init dir not found at ${CLOUD_INIT_DIR}/${host}"
         exit 1
     fi
 
@@ -147,19 +155,19 @@ flash_rpi() {
 
     if [[ -d "$BOOT_PATH" ]]; then
         echo "==> Injecting cloud-init config into system-boot..."
-        cp "${CLOUD_INIT_DIR}/rpi/user-data" "${BOOT_PATH}/user-data"
-        cp "${CLOUD_INIT_DIR}/rpi/network-config" "${BOOT_PATH}/network-config"
+        cp "${CLOUD_INIT_DIR}/${host}/user-data" "${BOOT_PATH}/user-data"
+        cp "${CLOUD_INIT_DIR}/${host}/network-config" "${BOOT_PATH}/network-config"
         echo "==> Cloud-init files written."
     else
         echo "⚠️  Could not find system-boot at ${BOOT_PATH}"
-        echo "   Manually copy cloud-init/rpi/{user-data,network-config} to the boot partition."
+        echo "   Manually copy cloud-init/${host}/{user-data,network-config} to the boot partition."
     fi
 
     echo "==> Ejecting ${disk}..."
     diskutil eject "$disk"
 
     echo ""
-    echo "✅ RPi SD card ready. Insert into Raspberry Pi and boot."
+    echo "✅ ${host} SD card ready. Insert into Raspberry Pi and boot."
 }
 
 flash_x86() {
@@ -204,7 +212,8 @@ case "$1" in
     list)      list_disks ;;
     download)  download_images ;;
     build-iso) [[ $# -ne 2 ]] && usage; "${SCRIPT_DIR}/build-iso.sh" "$2" ;;
-    rpi)       [[ $# -ne 2 ]] && usage; flash_rpi "$2" ;;
+    rpi3)      [[ $# -ne 2 ]] && usage; flash_rpi rpi3 "$2" ;;
+    rpi5)      [[ $# -ne 2 ]] && usage; flash_rpi rpi5 "$2" ;;
     optiplex)  [[ $# -ne 2 ]] && usage; flash_x86 optiplex "$2" ;;
     openclaw)  [[ $# -ne 2 ]] && usage; flash_x86 openclaw "$2" ;;
     localllm)  [[ $# -ne 2 ]] && usage; flash_x86 localllm "$2" ;;
