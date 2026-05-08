@@ -204,33 +204,34 @@ services:
       timeout: 5s
       retries: 3
 
-  # --- Portfolio agent --- (disabled)
-  # portfolio-agent:
-  #   image: ghcr.io/gmourtz/portfolio_agent:latest
-  #   container_name: portfolio-agent
-  #   restart: unless-stopped
-  #   mem_limit: 512m
-  #   networks:
-  #     - portfolio-net
-  #   volumes:
-  #     - portfolio-data:/data
-  #   environment:
-  #     T212_API_KEY: "{{ vault_t212_api_key }}"
-  #     T212_API_SECRET: "{{ vault_t212_api_secret }}"
-  #     T212_BASE_URL: "https://live.trading212.com/api/v0"
-  #     OPENAI_API_KEY: "{{ vault_openai_api_key }}"
-  #     OPENAI_MODEL: "gpt-4o"
-  #     FINNHUB_API_KEY: "{{ vault_finnhub_api_key | default('') }}"
-  #     TELEGRAM_BOT_TOKEN: "{{ vault_telegram_bot_token }}"
-  #     TELEGRAM_CHAT_ID: "{{ vault_telegram_chat_id }}"
-  #     POLL_INTERVAL: "86400"
-  #     TOP_N_FOR_NEWS: "5"
-  #     DATA_DIR: "/data"
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
-  #     interval: 30s
-  #     timeout: 5s
-  #     retries: 3
+  # --- Portfolio agent ---
+  portfolio-agent:
+    image: ghcr.io/gmourtz/portfolio_agent:latest
+    container_name: portfolio-agent
+    restart: unless-stopped
+    mem_limit: 512m
+    networks:
+      - portfolio-net
+    volumes:
+      - portfolio-data:/data
+    environment:
+      T212_API_KEY: "{{ vault_t212_api_key }}"
+      T212_API_SECRET: "{{ vault_t212_api_secret }}"
+      T212_BASE_URL: "https://live.trading212.com/api/v0"
+      OPENAI_API_KEY: "ollama"
+      OPENAI_BASE_URL: "http://localllm.internal:11434/v1"
+      OPENAI_MODEL: "qwen3:8b"
+      FINNHUB_API_KEY: "{{ vault_finnhub_api_key | default('') }}"
+      TELEGRAM_BOT_TOKEN: "{{ vault_telegram_bot_token }}"
+      TELEGRAM_CHAT_ID: "{{ vault_telegram_chat_id }}"
+      POLL_INTERVAL: "86400"
+      TOP_N_FOR_NEWS: "5"
+      DATA_DIR: "/data"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # --- Arr media automation ---
   gluetun:
@@ -546,9 +547,15 @@ services:
     environment:
       PAPERLESS_REDIS: "redis://paperless-redis:6379"
       PAPERLESS_SECRET_KEY: "{{ vault_paperless_secret_key }}"
-      PAPERLESS_URL: "http://paperless.{{ local_domain }}"
+      PAPERLESS_URL: "https://paperless.{{ local_domain }}"
+      PAPERLESS_CSRF_TRUSTED_ORIGINS: "https://paperless.{{ local_domain }}"
+      PAPERLESS_USE_X_FORWARD_HOST: "true"
+      PAPERLESS_USE_X_FORWARD_PORT: "true"
+      PAPERLESS_PROXY_SSL_HEADER: '["HTTP_X_FORWARDED_PROTO", "https"]'
       PAPERLESS_TIME_ZONE: "{{ timezone }}"
-      PAPERLESS_OCR_LANGUAGE: "eng"
+      PAPERLESS_OCR_LANGUAGES: "ell"
+      PAPERLESS_OCR_LANGUAGE: "eng+ell"
+      PAPERLESS_OCR_USER_ARGS: '{"language": "eng+ell"}'
       PAPERLESS_ADMIN_USER: "{{ vault_paperless_admin_user }}"
       PAPERLESS_ADMIN_PASSWORD: "{{ vault_paperless_admin_password }}"
       USERMAP_UID: "1000"
@@ -558,6 +565,44 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  paperless-gpt:
+    image: ghcr.io/icereed/paperless-gpt:latest
+    container_name: paperless-gpt
+    restart: unless-stopped
+    networks:
+      - paperless-net
+    depends_on:
+      paperless-ngx:
+        condition: service_healthy
+    environment:
+      PAPERLESS_BASE_URL: "http://paperless-ngx:8000"
+      PAPERLESS_PUBLIC_URL: "https://paperless.internal"
+      PAPERLESS_API_TOKEN: "{{ vault_paperless_api_token }}"
+      LLM_PROVIDER: "ollama"
+      LLM_MODEL: "gemma4:e4b"
+      OLLAMA_HOST: "http://localllm.internal:11434"
+      OLLAMA_CONTEXT_LENGTH: "16384"
+      LLM_LANGUAGE: "English or Greek"
+      LLM_REQUESTS_PER_MINUTE: "4"
+      AUTO_TAG: "paperless-gpt-auto"
+      AUTO_GENERATE_TITLE: "true"
+      AUTO_GENERATE_TAGS: "true"
+      AUTO_GENERATE_CORRESPONDENTS: "true"
+      AUTO_GENERATE_DOCUMENT_TYPE: "true"
+      AUTO_GENERATE_CREATED_DATE: "true"
+      CREATE_NEW_TAGS: "true"
+      TOKEN_LIMIT: "5000"
+      CORRESPONDENT_BLACK_LIST: "Unknown"
+      LOG_LEVEL: "info"
+    volumes:
+      - paperless-gpt-prompts:/app/prompts
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # --- Utilities ---
   stirling-pdf:
@@ -895,4 +940,5 @@ volumes:
   bazarr-config:
   musicseerr-config:
   musicseerr-cache:
+  paperless-gpt-prompts:
 

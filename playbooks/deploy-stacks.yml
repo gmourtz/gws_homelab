@@ -271,6 +271,23 @@
         group: "1000"
       when: tailscale_serve_port is defined
 
+    # --- Ollama model pull (localllm only) ---
+    # Ensures all models listed in ollama_models are downloaded.
+    # Ollama starts empty — this makes model provisioning declarative.
+    - name: List Ollama models already downloaded
+      ansible.builtin.command: docker exec ollama ollama list
+      register: _ollama_list
+      changed_when: false
+      when: ollama_models is defined
+
+    - name: Pull missing Ollama models
+      ansible.builtin.command: docker exec ollama ollama pull {{ item }}
+      loop: "{{ ollama_models }}"
+      when:
+        - ollama_models is defined
+        - item not in _ollama_list.stdout
+      changed_when: true
+
   handlers:
     - name: Restart homepage
       ansible.builtin.command: docker restart homepage
@@ -400,7 +417,7 @@
       loop: "{{ proxy_services }}"
       loop_control:
         label: "{{ item.name }}"
-        pause: 3
+        pause: 5
       when: kuma_enabled
       no_log: true
 

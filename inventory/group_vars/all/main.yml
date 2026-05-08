@@ -36,7 +36,7 @@ local_domain: internal
 # - name: the primary hostname (typically the inventory hostname)
 # - aliases: optional service names that resolve to the same IP
 dns_records:
-  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, musicseerr, paperless, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr, chat] }
+  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, musicseerr, paperless, paperless-gpt, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr, chat] }
   - { name: rpi3,     ip: "192.168.10.10", tag: hosts, aliases: [pihole] }
   - { name: rpi5,     ip: "192.168.10.11", tag: hosts }
   - { name: openclaw, ip: "192.168.40.30", tag: hosts }
@@ -66,6 +66,7 @@ proxy_services:
   - { name: lidarr,       upstream: "gluetun:8686",       tag: downloads }
   - { name: bazarr,       upstream: "gluetun:6767",       tag: downloads }
   - { name: chat,         upstream: "localllm.internal:8080", tag: ai }   # Open WebUI on localllm
+  - { name: paperless-gpt, upstream: "paperless-gpt:8080",  tag: ai }
 
 # qBittorrent download categories — written to /config/qBittorrent/categories.json on first run only.
 # Used by Radarr/Sonarr/Lidarr to route downloads into separate folders.

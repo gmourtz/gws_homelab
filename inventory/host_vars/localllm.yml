@@ -10,5 +10,10 @@ ufw_extra_rules:
   - { port: "7007",  proto: tcp, src: "192.168.10.20"   }   # Dozzle agent
   - { port: "2375",  proto: tcp, src: "192.168.10.20"   }   # Docker socket proxy (dozzle aggregator)
 
+# Ollama models to pull (deploy-stacks.yml ensures these are present)
+ollama_models:
+  - gemma4:e4b
+  - qwen3:8b
+
 # Tailscale enabled — same pattern as optiplex/rpi3 for remote access
 tailscale_enabled: true
