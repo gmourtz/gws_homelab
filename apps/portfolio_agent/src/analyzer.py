@@ -124,8 +124,8 @@ Rules:
 class PortfolioAnalyzer:
     """Sends curated data to OpenAI for structured narrative analysis."""
 
-    def __init__(self, api_key: str, model: str = "gpt-4o"):
-        self.client = OpenAI(api_key=api_key)
+    def __init__(self, api_key: str, model: str = "qwen3:8b", base_url: str | None = None):
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.model = model
 
     def analyze(

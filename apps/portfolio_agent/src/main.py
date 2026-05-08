@@ -27,7 +27,8 @@ T212_API_KEY = os.getenv("T212_API_KEY", "")
 T212_API_SECRET = os.getenv("T212_API_SECRET", "")
 T212_BASE_URL = os.getenv("T212_BASE_URL", "https://live.trading212.com/api/v0")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "qwen3:8b")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL") or None
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
@@ -87,6 +88,7 @@ def main() -> None:
         finnhub_client=finnhub,
         openai_api_key=OPENAI_API_KEY,
         openai_model=OPENAI_MODEL,
+        openai_base_url=OPENAI_BASE_URL,
         notifier=notifier,
         store=store,
         ips=ips,

@@ -88,10 +88,11 @@ def build_graph(
     store: SnapshotStore,
     ips: IPSConfig,
     top_n_news: int = 5,
+    openai_base_url: str | None = None,
 ) -> Any:
     """Build and compile the LangGraph portfolio analysis pipeline."""
 
-    analyzer = PortfolioAnalyzer(openai_api_key, openai_model)
+    analyzer = PortfolioAnalyzer(openai_api_key, openai_model, base_url=openai_base_url)
     policy_engine = PolicyEngine(ips)
 
     nodes = PipelineNodes(
