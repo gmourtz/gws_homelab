@@ -580,7 +580,7 @@ services:
       PAPERLESS_PUBLIC_URL: "https://paperless.internal"
       PAPERLESS_API_TOKEN: "{{ vault_paperless_api_token }}"
       LLM_PROVIDER: "ollama"
-      LLM_MODEL: "gemma4:e4b"
+      LLM_MODEL: "qwen3:8b-fast"
       OLLAMA_HOST: "http://localllm.internal:11434"
       OLLAMA_CONTEXT_LENGTH: "16384"
       LLM_LANGUAGE: "English or Greek"
