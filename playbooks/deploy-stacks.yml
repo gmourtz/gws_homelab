@@ -335,6 +335,7 @@
       infrastructure: "#8b5cf6"   # purple
       hosts:          "#ec4899"   # pink
       downloads:      "#f59e0b"   # amber
+      ai:             "#14b8a6"   # teal
 
   module_defaults:
     lucasheld.uptime_kuma.monitor:
