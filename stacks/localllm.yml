@@ -10,6 +10,7 @@ services:
       - ollama-models:/root/.ollama
     environment:
       OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_DEBUG: "1"                 # verbose logging: model names, load/unload, memory
       OLLAMA_KEEP_ALIVE: "2m"           # unload model from RAM after 2 min idle
       OLLAMA_MAX_LOADED_MODELS: "1"
       OLLAMA_NUM_PARALLEL: "1"

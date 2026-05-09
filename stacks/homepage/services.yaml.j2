@@ -162,6 +162,15 @@
         description: Local LLM API endpoint
         server: localllm
         container: ollama
+        widget:
+          type: customapi
+          url: http://localllm.{{ local_domain }}:11434/api/ps
+          refreshInterval: 30000
+          display: dynamic-list
+          mappings:
+            items: models
+            name: name
+            label: details.parameter_size
 
 - Tools:
     - Paperless:
