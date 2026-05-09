@@ -288,6 +288,70 @@
         - item not in _ollama_list.stdout
       changed_when: true
 
+    # --- Paperless-ngx taxonomy (optiplex only) ---
+    # Append-only: POSTs each item to the API. Duplicates return 400 and are
+    # silently ignored. To add new taxonomy items, append to the lists in
+    # inventory/group_vars/all/main.yml and re-run `make stacks`.
+    - name: Ensure Paperless document types exist
+      ansible.builtin.command: >
+        docker exec paperless-ngx curl -sf -X POST
+        -H "Authorization: Token {{ vault_paperless_api_token }}"
+        -H "Content-Type: application/json"
+        -d '{"name": "{{ item }}"}'
+        http://localhost:8000/api/document_types/
+      loop: "{{ paperless_document_types | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      register: _pless_dt
+      failed_when: _pless_dt.rc not in [0, 22]
+      changed_when: _pless_dt.rc == 0
+      when: inventory_hostname == 'optiplex'
+
+    - name: Ensure Paperless tags exist
+      ansible.builtin.command: >
+        docker exec paperless-ngx curl -sf -X POST
+        -H "Authorization: Token {{ vault_paperless_api_token }}"
+        -H "Content-Type: application/json"
+        -d '{"name": "{{ item }}"}'
+        http://localhost:8000/api/tags/
+      loop: "{{ paperless_tags | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      register: _pless_tag
+      failed_when: _pless_tag.rc not in [0, 22]
+      changed_when: _pless_tag.rc == 0
+      when: inventory_hostname == 'optiplex'
+
+    - name: Ensure Paperless correspondents exist
+      ansible.builtin.command: >
+        docker exec paperless-ngx curl -sf -X POST
+        -H "Authorization: Token {{ vault_paperless_api_token }}"
+        -H "Content-Type: application/json"
+        -d '{"name": "{{ item }}"}'
+        http://localhost:8000/api/correspondents/
+      loop: "{{ paperless_correspondents | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      register: _pless_corr
+      failed_when: _pless_corr.rc not in [0, 22]
+      changed_when: _pless_corr.rc == 0
+      when: inventory_hostname == 'optiplex'
+
+    - name: Ensure Paperless custom fields exist
+      ansible.builtin.command: >
+        docker exec paperless-ngx curl -sf -X POST
+        -H "Authorization: Token {{ vault_paperless_api_token }}"
+        -H "Content-Type: application/json"
+        -d '{"name": "{{ item.name }}", "data_type": "{{ item.data_type }}"}'
+        http://localhost:8000/api/custom_fields/
+      loop: "{{ paperless_custom_fields | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: _pless_cf
+      failed_when: _pless_cf.rc not in [0, 22]
+      changed_when: _pless_cf.rc == 0
+      when: inventory_hostname == 'optiplex'
+
   handlers:
     - name: Restart homepage
       ansible.builtin.command: docker restart homepage

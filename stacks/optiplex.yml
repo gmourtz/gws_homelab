@@ -571,7 +571,8 @@ services:
     container_name: paperless-gpt
     restart: unless-stopped
     networks:
-      - paperless-net
+      - paperless-net       # internal — talks to paperless-ngx + redis
+      - paperless-gpt-ext   # non-internal — reaches Ollama on LAN
     depends_on:
       paperless-ngx:
         condition: service_healthy
@@ -585,18 +586,20 @@ services:
       OLLAMA_CONTEXT_LENGTH: "16384"
       LLM_LANGUAGE: "English or Greek"
       LLM_REQUESTS_PER_MINUTE: "4"
-      AUTO_TAG: "paperless-gpt-auto"
+      AUTO_TAG: "sys:paperless-gpt-auto"
       AUTO_GENERATE_TITLE: "true"
       AUTO_GENERATE_TAGS: "true"
       AUTO_GENERATE_CORRESPONDENTS: "true"
       AUTO_GENERATE_DOCUMENT_TYPE: "true"
       AUTO_GENERATE_CREATED_DATE: "true"
-      CREATE_NEW_TAGS: "true"
-      TOKEN_LIMIT: "5000"
+      CREATE_NEW_TAGS: "false"
+      TOKEN_LIMIT: "2000"              # chars/4 fallback underestimates Greek text; 2000 keeps actual tokens ~2K
       CORRESPONDENT_BLACK_LIST: "Unknown"
       LOG_LEVEL: "info"
     volumes:
       - paperless-gpt-prompts:/app/prompts
+      - paperless-gpt-config:/app/config
+      - paperless-gpt-db:/app/db
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1"]
       interval: 30s
@@ -899,6 +902,9 @@ networks:
     driver: bridge
   paperless-net:
     driver: bridge
+    internal: true   # no internet access — documents stay local
+  paperless-gpt-ext:
+    driver: bridge   # non-internal — lets paperless-gpt reach Ollama on LAN
   website-net:
     driver: bridge
   immich-net:
@@ -941,4 +947,6 @@ volumes:
   musicseerr-config:
   musicseerr-cache:
   paperless-gpt-prompts:
+  paperless-gpt-config:
+  paperless-gpt-db:
 

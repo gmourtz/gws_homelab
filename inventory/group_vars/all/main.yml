@@ -102,3 +102,93 @@ removed_kuma_monitors:
   # keeping them permanently warm. Removed so they can actually go idle.
   - stirling-pdf
   - drawio
+
+# ---------------------------------------------------------------------------
+# Paperless-ngx taxonomy (append-only)
+#
+# Managed by deploy-stacks.yml — each item is POSTed to the Paperless API.
+# Duplicates are silently ignored (API returns 400, task ignores errors).
+# To add items: append here and run `make stacks`.
+# To rename/delete: do it in the Paperless UI (IaC is create-only).
+# ---------------------------------------------------------------------------
+paperless_document_types:
+  - Bank Statement
+  - Blood Test
+  - Certificate
+  - Contract
+  - ID Document
+  - Insurance Claim
+  - Insurance Policy
+  - Invoice
+  - Letter
+  - Medical Record
+  - Payslip
+  - Prescription
+  - Receipt
+  - Referral
+  - Resume/CV
+  - Tax Return
+  - Utility Bill
+
+paperless_tags:
+  # Education
+  - edu:education
+  # Finance
+  - fin:bank_statement
+  - fin:finance
+  - fin:payslip
+  - fin:pension
+  - fin:tax
+  # Geography
+  - geo:greece
+  - geo:uk
+  - geo:us
+  # Language
+  - lang:english
+  - lang:greek
+  # Medical specialties
+  - med:cardiology
+  - med:dental
+  - med:dermatology
+  - med:emergency
+  - med:endocrinology
+  - med:english
+  - med:ent
+  - med:eopyy
+  - med:gastroenterology
+  - med:general_practice
+  - med:greek
+  - med:gynecology
+  - med:lab_results
+  - med:neurology
+  - med:nhs
+  - med:ophthalmology
+  - med:orthopedics
+  - med:private_insurance
+  - med:pulmonology
+  - med:routine_checkup
+  - med:urology
+  - med:vaccination
+  # General
+  - medical
+  - personal
+  # System
+  - sys:needs-review
+  - sys:paperless-gpt
+  - sys:paperless-gpt-auto
+  # Work
+  - work:employment
+
+paperless_correspondents:
+  - Kubrick Group
+  - Rightmove Group Ltd
+  - ΒΙΟΤΥΠΟΣ
+
+# data_type values: string, url, date, boolean, integer, float, monetary, document_link
+paperless_custom_fields:
+  - { name: amount,           data_type: monetary }
+  - { name: diagnosis,        data_type: string }
+  - { name: doctor_name,      data_type: string }
+  - { name: follow_up_date,   data_type: date }
+  - { name: language,         data_type: string }
+  - { name: reference_number, data_type: string }
