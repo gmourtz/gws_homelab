@@ -153,12 +153,23 @@ jobs:
       security-events: write
 
     steps:
+      - uses: actions/checkout@v5
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve trivyignore path
+        id: ignore
+        run: |
+          if [[ -f "apps/${{ matrix.app }}/.trivyignore" ]]; then
+            echo "path=apps/${{ matrix.app }}/.trivyignore" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -168,4 +179,4 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
-          trivyignores: apps/${{ matrix.app }}/.trivyignore
+          trivyignores: ${{ steps.ignore.outputs.path }}
