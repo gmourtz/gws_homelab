@@ -247,6 +247,30 @@ services:
       timeout: 5s
       retries: 3
 
+  price-monitor:
+    image: ghcr.io/gmourtz/price_monitor:latest
+    container_name: price-monitor
+    restart: unless-stopped
+    mem_limit: 128m
+    networks:
+      - price-monitor-net
+    volumes:
+      - price-monitor-data:/data
+    environment:
+      TELEGRAM_BOT_TOKEN: "{{ vault_telegram_bot_token }}"
+      TELEGRAM_CHAT_ID: "{{ vault_telegram_chat_id }}"
+      OPENAI_API_KEY: "ollama"
+      OPENAI_BASE_URL: "http://localllm.internal:11434/v1"
+      OPENAI_MODEL: "qwen3:1.7b"
+      POLL_INTERVAL: "21600"
+      DATA_DIR: "/data"
+      WATCHLIST_PATH: "/data/watchlist.json"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # --- Arr media automation ---
   gluetun:
     image: qmcgaw/gluetun:latest
@@ -937,6 +961,8 @@ networks:
     driver: bridge
   portfolio-net:
     driver: bridge
+  price-monitor-net:
+    driver: bridge
   jellyfin-net:
     driver: bridge
   audiobookshelf-net:
@@ -999,6 +1025,7 @@ volumes:
   uptime-kuma-data:
   actual-budget-data:
   portfolio-data:
+  price-monitor-data:
   navidrome-data:
   qbittorrent-config:
   prowlarr-config:
