@@ -93,6 +93,21 @@ ondemand_services:
   - { name: stirling-pdf, upstream: "stirling-pdf:8080", group: "stirling-pdf", session_duration: "30m", tag: tools }
   - { name: drawio,       upstream: "drawio:8080",       group: "drawio",       session_duration: "30m", tag: tools }
 
+# Services shared with family/friends via Tailscale node sharing.
+# For each entry, stacks/optiplex.yml templates a Tailscale sidecar container that
+# joins the tailnet as `<name>-share` and serves the upstream over HTTPS via
+# Tailscale Serve at https://<name>-share.<your-tailnet>.ts.net.
+# Sidecars only deploy if vault_tailscale_jellyfin_authkey is defined.
+# - name: short identifier (becomes container/volume/hostname suffix)
+# - upstream: container_name:port (must be reachable on `network`)
+# - network: Docker network the sidecar joins (must be the same network the upstream is on)
+# Setup + onboarding: docs/jellyfin-family-access.md
+shared_services:
+  - { name: jellyfin,    upstream: "jellyfin:8096",    network: jellyfin-net }
+  - { name: jellyseerr,  upstream: "jellyseerr:5055",  network: jellyseerr-net }
+  - { name: navidrome,   upstream: "navidrome:4533",   network: navidrome-net }
+  - { name: musicseerr,  upstream: "musicseerr:8688",  network: navidrome-net }
+
 # Uptime Kuma monitors to remove — names of deprecated monitors that are no longer
 # in proxy_services / ondemand_services / dns_records but still exist in Kuma's
 # database. The cleanup task in deploy-stacks.yml deletes these by exact name.

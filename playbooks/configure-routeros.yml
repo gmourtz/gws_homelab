@@ -132,7 +132,6 @@
           - { interface: ether2, bridge: bridge1, pvid: 10, frame-types: admit-only-untagged-and-priority-tagged }
           - { interface: ether3, bridge: bridge1, pvid: 10, frame-types: admit-only-untagged-and-priority-tagged }
           - { interface: ether4, bridge: bridge1, pvid: 10, frame-types: admit-only-untagged-and-priority-tagged }
-          # ether5 = lab access port (PVID 50) — plug Kali rpi5 here
           - { interface: ether5, bridge: bridge1, pvid: 50, frame-types: admit-only-untagged-and-priority-tagged }
           - { interface: wifi1,  bridge: bridge1, frame-types: admit-only-vlan-tagged }
           - { interface: wifi2,  bridge: bridge1, frame-types: admit-only-vlan-tagged }

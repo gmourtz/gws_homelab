@@ -39,6 +39,20 @@ configs:
         }
       }
 {% endfor %}
+{% if vault_tailscale_jellyfin_authkey is defined %}
+{% for svc in shared_services | default([]) %}
+  {{ svc.name }}-ts-serve:
+    content: |
+      {
+        "TCP": {"443": {"HTTPS": true}},
+        "Web": {
+          "$${TS_CERT_DOMAIN}:443": {
+            "Handlers": {"/": {"Proxy": "http://{{ svc.upstream }}"}}
+          }
+        }
+      }
+{% endfor %}
+{% endif %}
 
 services:
   # --- Reverse proxy ---
@@ -468,7 +482,7 @@ services:
       - docker-proxy-net
     environment:
       DOZZLE_HOSTNAME: "optiplex"
-      DOZZLE_REMOTE_AGENT: "dozzle-agent:7007,rpi3.{{ local_domain }}:7007,rpi5.{{ local_domain }}:7007,openclaw.{{ local_domain }}:7007,localllm.{{ local_domain }}:7007"
+      DOZZLE_REMOTE_AGENT: "dozzle-agent:7007,rpi3.{{ local_domain }}:7007,openclaw.{{ local_domain }}:7007,localllm.{{ local_domain }}:7007,kali.{{ local_domain }}:7007"
     healthcheck:
       test: ["CMD", "/dozzle", "healthcheck"]
       interval: 30s
@@ -589,7 +603,7 @@ services:
       AUTO_TAG: "sys:paperless-gpt-auto"
       AUTO_GENERATE_TITLE: "true"
       AUTO_GENERATE_TAGS: "true"
-      AUTO_GENERATE_CORRESPONDENTS: "true"
+      AUTO_GENERATE_CORRESPONDENTS: "false"   # disabled — LLM creates variants; no CREATE_NEW_CORRESPONDENTS gate exists
       AUTO_GENERATE_DOCUMENT_TYPE: "true"
       AUTO_GENERATE_CREATED_DATE: "true"
       CREATE_NEW_TAGS: "false"
@@ -755,6 +769,49 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+{% if vault_tailscale_jellyfin_authkey is defined %}
+  # Family/friends access via Tailscale node sharing. Each shared_services entry
+  # gets its own sidecar that joins your tailnet as `<name>-share` and serves
+  # the upstream over HTTPS at https://<name>-share.<your-tailnet>.ts.net.
+  # Family members are invited per-node — they cannot see the rest of your
+  # tailnet, and the strict ACL prevents sidecars from initiating outbound
+  # connections within your tailnet. Setup + onboarding: docs/jellyfin-family-access.md
+{% for svc in shared_services | default([]) %}
+  {{ svc.name }}-tailscale:
+    image: tailscale/tailscale:latest
+    container_name: {{ svc.name }}-tailscale
+    hostname: {{ svc.name }}-share
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      - {{ svc.network }}
+    volumes:
+      - {{ svc.name }}-tailscale-state:/var/lib/tailscale
+    configs:
+      - source: {{ svc.name }}-ts-serve
+        target: /config/serve.json
+    environment:
+      TS_AUTHKEY: "{{ vault_tailscale_jellyfin_authkey }}"
+      TS_HOSTNAME: "{{ svc.name }}-share"
+      TS_STATE_DIR: "/var/lib/tailscale"
+      TS_SERVE_CONFIG: "/config/serve.json"
+      TS_EXTRA_ARGS: "--advertise-tags=tag:family-share --accept-dns=false"
+      TS_USERSPACE: "false"
+      TS_AUTH_ONCE: "true"
+    depends_on:
+      {{ svc.name }}:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "tailscale", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+{% endfor %}
+{% endif %}
 
   # --- Photo management ---
   immich-server:
@@ -923,6 +980,11 @@ volumes:
   beszel-data:
   jellyfin-config:
   jellyfin-cache:
+{% if vault_tailscale_jellyfin_authkey is defined %}
+{% for svc in shared_services | default([]) %}
+  {{ svc.name }}-tailscale-state:
+{% endfor %}
+{% endif %}
   audiobookshelf-config:
   audiobookshelf-metadata:
   stirling-pdf-data:
