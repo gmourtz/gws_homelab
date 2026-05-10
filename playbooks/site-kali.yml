@@ -1,0 +1,201 @@
+---
+# Bootstrap a Kali Linux host — pentesting lab on VLAN 50.
+#
+# Why this is separate from site.yml:
+#   site.yml's Docker/Tailscale tasks pin to Ubuntu apt repos and the 'noble'
+#   distribution release. Kali is Debian-based with a kali-rolling release,
+#   and we want it lean (no Tailscale, no fail2ban — it's an isolated box
+#   that gets reflashed when broken). This playbook does only what Kali needs.
+#
+# Prerequisites:
+#   - Image flashed with: ./scripts/flash.sh rpi5 /dev/diskN
+#     flash.sh injects cloud-init/kali/user-data which creates the gws user
+#     and SSH key on first boot — no sshpass or manual steps needed.
+#   - Pi plugged into MikroTik ether5 (VLAN 50 access port)
+#   - Wait for cloud-init to complete (~2 min) and Pi to reboot automatically
+#   - DHCP lease places it at 192.168.50.11 (static lease in MikroTik)
+#
+# Run (gws user, key auth — same as the rest of the homelab):
+#   ansible-playbook playbooks/site-kali.yml
+
+- name: Bootstrap Kali Linux lab host
+  hosts: kali_lab
+  become: true
+  gather_facts: true
+
+  tasks:
+    # --- Provision the gws admin user (so we can drop the default kali user) ---
+    - name: Create gws admin user
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        shell: /bin/bash
+        groups: [sudo]
+        append: true
+        state: present
+
+    - name: Authorize SSH key for gws
+      ansible.posix.authorized_key:
+        user: "{{ admin_user }}"
+        key: "{{ admin_ssh_pubkey }}"
+        state: present
+
+    - name: Grant gws passwordless sudo
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/90-gws
+        content: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: /usr/sbin/visudo -cf %s
+
+    # --- Lock the default kali user (keep it for forensics, deny login) ---
+    # Don't delete: /home/kali may hold tooling state, wordlists, post-exploit
+    # captures the user wants to keep. Locking is reversible; deletion isn't.
+    - name: Lock kali user password
+      ansible.builtin.user:
+        name: kali
+        password_lock: true
+        state: present
+      failed_when: false  # absent on subsequent runs if user removed it manually
+
+    - name: Disable SSH login for kali user
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        line: "DenyUsers kali"
+        regexp: "^DenyUsers"
+        state: present
+      notify: Restart SSH
+
+    # --- Hostname + timezone ---
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: kali
+
+    - name: Set timezone
+      community.general.timezone:
+        name: "{{ timezone }}"
+
+    # --- /etc/hosts from dns_records ---
+    # Same pattern as site.yml so kali can resolve homelab names locally
+    # (only useful for things on the lab subnet — VLAN 10 hosts are
+    # firewall-blocked, but the entries don't hurt).
+    - name: Populate /etc/hosts from dns_records
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: ".*# homelab: {{ item.name }}$"
+        line: "{{ item.ip }}  {{ item.name }}.{{ local_domain }} {{ item.name }} {{ item.aliases | default([]) | map('regex_replace', '^(.*)$', '\\1.' ~ local_domain ~ ' \\1') | join(' ') }}  # homelab: {{ item.name }}"
+        state: present
+      loop: "{{ dns_records | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # --- SSH hardening ---
+    - name: Disable SSH password auth & root login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication no" }
+        - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin no" }
+      notify: Restart SSH
+
+    # --- UFW (lab targets only — narrow exposure to VLAN 10/50) ---
+    - name: Install UFW
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: UFW — set default policies
+      community.general.ufw:
+        direction: "{{ item.direction }}"
+        default: "{{ item.default }}"
+      loop:
+        - { direction: incoming, default: deny }
+        - { direction: outgoing, default: allow }
+
+    - name: UFW — allow SSH
+      community.general.ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+
+    - name: UFW — allow host-specific lab target ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: "{{ item.proto | default('tcp') }}"
+        src: "{{ item.src | default(omit) }}"
+      loop: "{{ ufw_extra_rules | default([]) }}"
+      loop_control:
+        label: "{{ item.port }}"
+
+    - name: UFW — enable
+      community.general.ufw:
+        state: enabled
+
+    # --- Docker (from Kali's own repos — no Docker Inc. repo gymnastics) ---
+    # docker.io is built for kali-rolling and ships multi-arch (arm64 incl.).
+    # Compose v2 is in the docker-compose package on Kali 2026+.
+    - name: Install Docker (Kali repo)
+      ansible.builtin.apt:
+        name: [docker.io, docker-compose]
+        state: present
+        update_cache: true
+
+    - name: Enable Docker
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add gws to docker group
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        groups: docker
+        append: true
+
+    - name: Configure Docker daemon (avoid pool collision with other hosts)
+      ansible.builtin.copy:
+        content: |
+          {
+            "default-address-pools": [
+              {"base": "10.50.0.0/16", "size": 24}
+            ]
+          }
+        dest: /etc/docker/daemon.json
+        mode: "0644"
+        owner: root
+        group: root
+      notify: Restart Docker
+
+    # --- Passive WiFi capture tooling (lab use on networks we own) ---
+    # aircrack-ng:    airmon-ng / airodump-ng / aireplay-ng
+    # tshark:         CLI Wireshark for quick pcap inspection on-host
+    # iw, rfkill:     diagnose radio state when monitor mode misbehaves
+    # Wrapper script lives at /usr/local/sbin/wifi-capture.sh — see its --help.
+    - name: Install WiFi capture tooling
+      ansible.builtin.apt:
+        name: [aircrack-ng, tshark, iw, rfkill]
+        state: present
+
+    - name: Install wifi-capture.sh wrapper
+      ansible.builtin.copy:
+        src: ../scripts/wifi-capture.sh
+        dest: /usr/local/sbin/wifi-capture.sh
+        owner: root
+        group: root
+        mode: "0755"
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted
+
+    - name: Restart Docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted

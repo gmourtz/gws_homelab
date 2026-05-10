@@ -1,0 +1,21 @@
+---
+# Host vars for kali — Kali Linux, pentesting lab on VLAN 50.
+# Used by playbooks/site-kali.yml (not site.yml — kali_lab group is excluded).
+
+# UFW extra rules — ports exposed by stacks/kali.yml.
+# Lab targets open to trusted (192.168.10.0/24) and lab subnet (192.168.50.0/24).
+# Monitoring ports restricted to optiplex only (192.168.10.20).
+ufw_extra_rules:
+  # Juice Shop (OWASP Top 10 — SPA on Express)
+  - { port: "3000", proto: tcp, src: "192.168.50.0/24" }
+  - { port: "3000", proto: tcp, src: "192.168.10.0/24" }
+  # WebGoat (guided OWASP lessons — Java)
+  - { port: "8080", proto: tcp, src: "192.168.50.0/24" }
+  - { port: "8080", proto: tcp, src: "192.168.10.0/24" }
+  # WebWolf (WebGoat companion — for testing CSRF / open redirect lessons)
+  - { port: "9090", proto: tcp, src: "192.168.50.0/24" }
+  - { port: "9090", proto: tcp, src: "192.168.10.0/24" }
+  # Beszel agent — hub (optiplex) connects in to collect metrics
+  - { port: "45876", proto: tcp, src: "192.168.10.0/24" }
+  # Dozzle agent — hub (optiplex) connects in to pull container logs
+  - { port: "7007", proto: tcp, src: "192.168.10.20" }

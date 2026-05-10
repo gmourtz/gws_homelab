@@ -132,7 +132,8 @@
           - { interface: ether2, bridge: bridge1, pvid: 10, frame-types: admit-only-untagged-and-priority-tagged }
           - { interface: ether3, bridge: bridge1, pvid: 10, frame-types: admit-only-untagged-and-priority-tagged }
           - { interface: ether4, bridge: bridge1, pvid: 10, frame-types: admit-only-untagged-and-priority-tagged }
-          - { interface: ether5, bridge: bridge1, pvid: 10, frame-types: admit-only-untagged-and-priority-tagged }
+          # ether5 = lab access port (PVID 50) — plug Kali rpi5 here
+          - { interface: ether5, bridge: bridge1, pvid: 50, frame-types: admit-only-untagged-and-priority-tagged }
           - { interface: wifi1,  bridge: bridge1, frame-types: admit-only-vlan-tagged }
           - { interface: wifi2,  bridge: bridge1, frame-types: admit-only-vlan-tagged }
 
@@ -149,7 +150,7 @@
         data:
           - bridge: bridge1
             vlan-ids: "10"
-            untagged: "ether2,ether3,ether4,ether5"
+            untagged: "ether2,ether3,ether4"  # ether5 moved to VLAN 50 (lab)
             tagged: "bridge1,wifi1,wifi2"     # GWS-Home on both bands
             comment: "VLAN 10 - Trusted"
 
@@ -167,6 +168,12 @@
             vlan-ids: "40"
             tagged: "bridge1,wifi1"           # GWS-Agent on 2.4 GHz only
             comment: "VLAN 40 - Agent"
+
+          - bridge: bridge1
+            vlan-ids: "50"
+            untagged: "ether5"                # Kali rpi5 access port
+            tagged: "bridge1"                 # wired-only — no wifi SSID for now
+            comment: "VLAN 50 - Lab"
 
     # -----------------------------------------------------------------------
     # 8. VLAN interfaces (bridge1.10 / .20 / .30)

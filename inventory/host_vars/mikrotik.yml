@@ -68,6 +68,21 @@ vlans:
       - 1.1.1.1
     domain: internal
 
+  # VLAN 50 — Lab (Kali + vulnerable training targets)
+  # Hard-isolated from all internal VLANs by firewall (see lab rules below).
+  # Uses public DNS, NOT Pi-hole — keeps Pi-hole query logs clean of attack noise.
+  - id: 50
+    name: lab
+    subnet: 192.168.50.0/24
+    gateway: 192.168.50.1
+    dhcp_pool_name: pool-lab
+    dhcp_range_start: 192.168.50.100
+    dhcp_range_end: 192.168.50.199
+    dns_servers:
+      - 1.1.1.1
+      - 9.9.9.9
+    domain: lab
+
 # ---------------------------------------------------------------------------
 # DHCP static leases
 # ---------------------------------------------------------------------------
@@ -92,10 +107,10 @@ dhcp_static_leases:
     ip_address: 192.168.10.30
     server: dhcp-trusted
 
-  - comment: rpi5
+  - comment: kali
     mac_address: "88:A2:9E:75:22:86"
-    ip_address: 192.168.10.11
-    server: dhcp-trusted
+    ip_address: 192.168.50.11
+    server: dhcp-lab
 
 # ---------------------------------------------------------------------------
 # WiFi SSIDs
@@ -279,6 +294,76 @@ firewall_filter_rules:
     protocol: udp
     dst-port: "123"
     in-interface: bridge1.40
+
+  # ---------------------------------------------------------------
+  # Lab (VLAN 50) — pentesting box (Kali)
+  #
+  # Asymmetric isolation:
+  #   - Lab CANNOT initiate to any internal VLAN (drop rule below).
+  #   - Trusted CAN reach lab via the permissive "trusted -> internet
+  #     and IoT" rule above (no dst restriction). Browse Juice Shop /
+  #     SSH to Kali from your laptop without VLAN-hopping.
+  # If a target gets popped, blast radius stops at 192.168.50.0/24.
+  #
+  # Monitoring exceptions (must come before the drop rule):
+  #   - beszel-agent connects out to beszel-hub on optiplex:8090
+  # ---------------------------------------------------------------
+
+  # Lab -> beszel-hub (monitoring — same pattern as agent VLAN)
+  - chain: forward
+    action: accept
+    comment: "kali -> beszel-hub on optiplex"
+    src-address: 192.168.50.0/24
+    dst-address: 192.168.10.20
+    protocol: tcp
+    dst-port: "8090"
+    in-interface: bridge1.50
+
+  - chain: forward
+    action: drop
+    comment: "drop lab -> all internal VLANs (lab isolation)"
+    src-address: 192.168.50.0/24
+    dst-address: 192.168.0.0/16
+    in-interface: bridge1.50
+
+  # Lab -> internet HTTP/HTTPS (apt updates, container image pulls,
+  # connecting to HTB/THM/CTF targets)
+  - chain: forward
+    action: accept
+    comment: "lab -> internet HTTP/HTTPS"
+    src-address: 192.168.50.0/24
+    out-interface: ether1
+    protocol: tcp
+    dst-port: "80,443"
+    in-interface: bridge1.50
+
+  # Lab -> public DNS (1.1.1.1 / 9.9.9.9 — never Pi-hole)
+  - chain: forward
+    action: accept
+    comment: "lab -> internet DNS (UDP)"
+    src-address: 192.168.50.0/24
+    out-interface: ether1
+    protocol: udp
+    dst-port: "53"
+    in-interface: bridge1.50
+
+  - chain: forward
+    action: accept
+    comment: "lab -> internet DNS (TCP)"
+    src-address: 192.168.50.0/24
+    out-interface: ether1
+    protocol: tcp
+    dst-port: "53"
+    in-interface: bridge1.50
+
+  - chain: forward
+    action: accept
+    comment: "lab -> internet NTP"
+    src-address: 192.168.50.0/24
+    out-interface: ether1
+    protocol: udp
+    dst-port: "123"
+    in-interface: bridge1.50
 
   # Guest -> internet (all outbound)
   - chain: forward

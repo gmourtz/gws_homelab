@@ -12,7 +12,11 @@
 #   ansible-playbook playbooks/site.yml --limit rpi3
 
 - name: Configure homelab
-  hosts: all:!routers:!services
+  # !kali_lab — Kali is Debian-based, not Ubuntu. The Docker/Tailscale repo tasks
+  # below pin to ansible_facts.distribution_release (= 'noble' on Ubuntu,
+  # 'kali-rolling' on Kali) and Ubuntu apt URLs, so they fail on Kali.
+  # Kali hosts are bootstrapped separately via playbooks/site-kali.yml.
+  hosts: all:!routers:!services:!kali_lab
   become: true
   gather_facts: true
 

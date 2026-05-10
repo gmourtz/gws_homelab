@@ -45,41 +45,52 @@
       when: ghcr_username is defined and ghcr_token is defined
       no_log: true
 
-    - name: Pull and deploy stack
-      community.docker.docker_compose_v2:
-        project_src: "{{ stacks_dest }}"
-        pull: always
-        state: present
-        remove_orphans: true
+    # Wrapped in block/always so the Sablier auto-stop sweep below runs even if
+    # `docker compose up` partially fails (e.g. a single unhealthy dependency
+    # aborts the task after compose has already started all other containers,
+    # including Sablier-managed ones). Without this, a failed deploy leaves
+    # on-demand services (stirling-pdf, drawio) running indefinitely with no
+    # sweep to stop them.
+    - block:
+        - name: Pull and deploy stack
+          community.docker.docker_compose_v2:
+            project_src: "{{ stacks_dest }}"
+            pull: always
+            state: present
+            remove_orphans: true
+          register: compose_deploy
 
-    # The Caddyfile is embedded in the compose file via `configs:`, so changing
-    # proxy_services or ondemand_services only changes file content — no service
-    # block changes. Compose's auto-recreate doesn't detect this, so Caddy keeps
-    # serving the stale config. Force-recreate only when the compose file changed.
-    - name: Force-recreate Caddy to pick up Caddyfile content changes
-      community.docker.docker_compose_v2:
-        project_src: "{{ stacks_dest }}"
-        services:
-          - caddy
-        state: present
-        recreate: always
-      when:
-        - inventory_hostname == 'optiplex'
-        - compose_template.changed
-
-    # Sablier's `--provider.auto-stop-on-startup` only fires at Sablier's own boot.
-    # When `make stacks` recreates a Sablier-enabled container (stirling-pdf, drawio)
-    # while Sablier is already running, Sablier never auto-stops the new container —
-    # it sits idle indefinitely. Restart Sablier on compose change so its auto-stop
-    # sweep runs and idle on-demand containers go to sleep.
-    # (Plain `docker restart` is more reliable here than docker_compose_v2's
-    # `recreate: always` with a services filter, which silently no-ops in practice.)
-    - name: Restart Sablier to re-run auto-stop-on-startup sweep
-      ansible.builtin.command: docker restart sablier
-      changed_when: true
-      when:
-        - inventory_hostname == 'optiplex'
-        - compose_template.changed
+        # The Caddyfile is embedded in the compose file via `configs:`, so changing
+        # proxy_services or ondemand_services only changes file content — no service
+        # block changes. Compose's auto-recreate doesn't detect this, so Caddy keeps
+        # serving the stale config. Force-recreate only when the compose file changed.
+        - name: Force-recreate Caddy to pick up Caddyfile content changes
+          community.docker.docker_compose_v2:
+            project_src: "{{ stacks_dest }}"
+            services:
+              - caddy
+            state: present
+            recreate: always
+          when:
+            - inventory_hostname == 'optiplex'
+            - compose_template.changed
+      always:
+        # Sablier's `--provider.auto-stop-on-startup` only fires at Sablier's own boot.
+        # When `docker compose up` (re)starts a Sablier-enabled container (stirling-pdf,
+        # drawio) — whether triggered by a compose file edit or a new image pulled from
+        # GHCR — Sablier never auto-stops the new container, so it sits idle indefinitely.
+        # Restart Sablier whenever compose actually changed something (file edit OR image
+        # pull OR container recreation) so its auto-stop sweep runs.
+        # `compose_deploy` may be undefined when the deploy task itself errors before
+        # registering, so default to false.
+        # (Plain `docker restart` is more reliable here than docker_compose_v2's
+        # `recreate: always` with a services filter, which silently no-ops in practice.)
+        - name: Restart Sablier to re-run auto-stop-on-startup sweep
+          ansible.builtin.command: docker restart sablier
+          changed_when: true
+          when:
+            - inventory_hostname == 'optiplex'
+            - compose_template.changed or (compose_deploy.changed | default(false))
 
     # --- Homepage config (optiplex only) ---
     - name: Ensure Homepage config directory exists in volume

@@ -38,7 +38,7 @@ local_domain: internal
 dns_records:
   - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, musicseerr, paperless, paperless-gpt, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr, chat] }
   - { name: rpi3,     ip: "192.168.10.10", tag: hosts, aliases: [pihole] }
-  - { name: rpi5,     ip: "192.168.10.11", tag: hosts }
+  - { name: kali,     ip: "192.168.50.11", tag: hosts, aliases: [juice-shop, webgoat] }
   - { name: openclaw, ip: "192.168.40.30", tag: hosts }
   - { name: localllm, ip: "192.168.10.30", tag: hosts }
 
@@ -180,8 +180,16 @@ paperless_tags:
   - work:employment
 
 paperless_correspondents:
-  - Kubrick Group
+  - Arkadia Energy Solutions Ltd
+  - GEODOMI LTD
+  - HMRC
+  - Kubrick Group Ltd
+  - Legal & General (Portfolio Management Services) Limited
   - Rightmove Group Ltd
+  - Siemens Plc
+  - U.S. Department of Homeland Security
+  - Vitality Corporate Services Limited
+  - ΒΙΟΠΑΘΟΛΟΓΙΚΟ - ΜΙΚΡΟΒΙΟΛΟΓΙΚΟ ΕΡΓΑΣΤΗΡΙΟ
   - ΒΙΟΤΥΠΟΣ
 
 # data_type values: string, url, date, boolean, integer, float, monetary, document_link

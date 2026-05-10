@@ -24,13 +24,19 @@ OPTIPLEX_ISO="ubuntu-24.04.4-live-server-amd64.iso"
 OPTIPLEX_URL="https://releases.ubuntu.com/24.04/${OPTIPLEX_ISO}"
 OPTIPLEX_AUTOINSTALL_ISO="optiplex-autoinstall.iso"
 
+# --- Kali Linux ARM Pi image (used for rpi5 — pentesting lab) ---
+# Bump this when a newer release is out: https://www.kali.org/get-kali/#kali-arm
+KALI_VERSION="2026.1"
+KALI_IMAGE="kali-linux-${KALI_VERSION}-raspberry-pi-arm64.img.xz"
+KALI_URL="https://kali.download/arm-images/kali-${KALI_VERSION}/${KALI_IMAGE}"
+
 usage() {
     echo "Usage:"
     echo "  $0 list                 Show external/removable disks"
     echo "  $0 download             Download OS images to ./images/"
     echo "  $0 build-iso <host>     Build autoinstall ISO (optiplex, openclaw)"
-    echo "  $0 rpi3     /dev/diskN  Flash RPi 3 image to SD card"
-    echo "  $0 rpi5     /dev/diskN  Flash RPi 5 image to SD card"
+    echo "  $0 rpi3     /dev/diskN  Flash RPi 3 image to SD card (Ubuntu)"
+    echo "  $0 rpi5     /dev/diskN  Flash RPi 5 image to SD card (Kali Linux — lab box)"
     echo "  $0 optiplex /dev/diskN  Flash optiplex autoinstall ISO to USB stick"
     echo "  $0 openclaw /dev/diskN  Flash openclaw autoinstall ISO to USB stick"
     echo "  $0 localllm /dev/diskN  Flash localllm autoinstall ISO to USB stick"
@@ -39,7 +45,7 @@ usage() {
     echo "  1. $0 download             # fetch base images"
     echo "  2. $0 build-iso <host>     # repack ISO with autoinstall (optiplex, openclaw)"
     echo "  3. $0 list                 # identify your SD/USB disk"
-    echo "  4. $0 rpi3 /dev/diskN      # flash RPi 3 SD card (or rpi5 for the Pi 5)"
+    echo "  4. $0 rpi3 /dev/diskN      # flash RPi 3 SD card (or rpi5 for Kali on the Pi 5)"
     echo "  5. $0 optiplex /dev/diskN  # flash OptiPlex USB"
     exit 1
 }
@@ -71,10 +77,19 @@ download_images() {
     echo ""
 
     if [[ -f "${IMAGE_DIR}/${RPI_IMAGE}" ]]; then
-        echo "  RPi image already exists, skipping."
+        echo "  RPi (Ubuntu) image already exists, skipping."
     else
-        echo "  Downloading RPi image (~1.2 GB)..."
+        echo "  Downloading RPi (Ubuntu) image (~1.2 GB)..."
         curl -L --progress-bar -o "${IMAGE_DIR}/${RPI_IMAGE}" "${RPI_URL}"
+    fi
+
+    echo ""
+
+    if [[ -f "${IMAGE_DIR}/${KALI_IMAGE}" ]]; then
+        echo "  Kali ARM image already exists, skipping."
+    else
+        echo "  Downloading Kali ARM image (~3 GB)..."
+        curl -L --progress-bar -o "${IMAGE_DIR}/${KALI_IMAGE}" "${KALI_URL}"
     fi
 
     echo ""
@@ -170,6 +185,73 @@ flash_rpi() {
     echo "✅ ${host} SD card ready. Insert into Raspberry Pi and boot."
 }
 
+flash_kali() {
+    # Flash the Kali ARM Pi image and inject cloud-init config.
+    # Kali 2026+ uses ds=nocloud — reads user-data/network-config from the BOOT partition.
+    # cloud-init creates the gws user + SSH key so site-kali.yml needs no sshpass.
+    local disk="$1"
+    local rdisk="${disk/disk/rdisk}"
+
+    echo "==> Flashing Kali (${KALI_VERSION}) to ${disk}..."
+
+    if [[ ! -f "${IMAGE_DIR}/${KALI_IMAGE}" ]]; then
+        echo "ERROR: Kali image not found at ${IMAGE_DIR}/${KALI_IMAGE}"
+        echo "Run: $0 download"
+        exit 1
+    fi
+
+    if [[ ! -d "${CLOUD_INIT_DIR}/kali" ]]; then
+        echo "ERROR: cloud-init dir not found at ${CLOUD_INIT_DIR}/kali"
+        exit 1
+    fi
+
+    validate_disk "$disk"
+    confirm "$disk"
+
+    echo "==> Unmounting ${disk}..."
+    diskutil unmountDisk "$disk"
+
+    echo "==> Writing image (this may take several minutes)..."
+    xzcat "${IMAGE_DIR}/${KALI_IMAGE}" | sudo dd of="$rdisk" bs=4m status=progress
+
+    echo "==> Syncing..."
+    sync
+
+    echo "==> Waiting for partitions..."
+    sleep 3
+    diskutil mountDisk "$disk"
+
+    BOOT_PATH="/Volumes/BOOT"
+
+    if [[ -d "$BOOT_PATH" ]]; then
+        echo "==> Injecting cloud-init config into BOOT..."
+        cp "${CLOUD_INIT_DIR}/kali/user-data"     "${BOOT_PATH}/user-data"
+        cp "${CLOUD_INIT_DIR}/kali/network-config" "${BOOT_PATH}/network-config"
+        echo "==> Cloud-init files written."
+    else
+        echo "⚠️  Could not find BOOT at ${BOOT_PATH}"
+        echo "   Manually copy cloud-init/kali/{user-data,network-config} to the BOOT partition."
+    fi
+
+    echo "==> Ejecting ${disk}..."
+    diskutil eject "$disk"
+
+    cat <<EOF
+
+✅ Kali SD card ready.
+
+Next steps:
+  1. Plug the SD card into the Pi
+  2. Plug Pi into MikroTik ether5 (VLAN 50 access port)
+  3. Power on. Cloud-init runs (~2 min), then the Pi reboots automatically.
+  4. After reboot, MikroTik assigns 192.168.50.11. Wait ~1 min, then:
+       ssh-keygen -R 192.168.50.11
+       ansible-playbook playbooks/site-kali.yml
+  5. After bootstrap: make stacks → deploys vulnerable lab targets.
+
+EOF
+}
+
 flash_x86() {
     local host="$1"
     local disk="$2"
@@ -213,7 +295,7 @@ case "$1" in
     download)  download_images ;;
     build-iso) [[ $# -ne 2 ]] && usage; "${SCRIPT_DIR}/build-iso.sh" "$2" ;;
     rpi3)      [[ $# -ne 2 ]] && usage; flash_rpi rpi3 "$2" ;;
-    rpi5)      [[ $# -ne 2 ]] && usage; flash_rpi rpi5 "$2" ;;
+    rpi5)      [[ $# -ne 2 ]] && usage; flash_kali     "$2" ;;  # Kali — see flash_kali
     optiplex)  [[ $# -ne 2 ]] && usage; flash_x86 optiplex "$2" ;;
     openclaw)  [[ $# -ne 2 ]] && usage; flash_x86 openclaw "$2" ;;
     localllm)  [[ $# -ne 2 ]] && usage; flash_x86 localllm "$2" ;;
