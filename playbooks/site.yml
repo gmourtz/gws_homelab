@@ -145,6 +145,18 @@
         mode: "0644"
 
     # --- External storage ---
+    # Branch filesystems must mount before the mergerfs pool that unions them.
+    - name: Mount storage branch drives
+      ansible.posix.mount:
+        src: "{{ item.src }}"
+        path: "{{ item.path }}"
+        fstype: "{{ item.fstype }}"
+        opts: "{{ item.opts }}"
+        state: mounted
+      loop: "{{ storage_branches | default([]) }}"
+      loop_control:
+        label: "{{ item.path }}"
+
     - name: Mount external data drive
       ansible.posix.mount:
         src: "{{ data_mount.src }}"

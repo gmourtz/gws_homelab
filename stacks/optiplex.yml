@@ -42,6 +42,10 @@ configs:
 {% if vault_tailscale_jellyfin_authkey is defined %}
 {% for svc in shared_services | default([]) %}
   {{ svc.name }}-ts-serve:
+    # `$${TS_CERT_DOMAIN}` (doubled $) is required so Docker Compose passes the
+    # literal `${TS_CERT_DOMAIN}` placeholder through to the file. The Tailscale
+    # containerboot then substitutes it at runtime with the node's MagicDNS FQDN.
+    # Without the doubling, Compose expands it at parse time → blank string → broken serve.
     content: |
       {
         "TCP": {"443": {"HTTPS": true}},
@@ -241,30 +245,6 @@ services:
       POLL_INTERVAL: "86400"
       TOP_N_FOR_NEWS: "5"
       DATA_DIR: "/data"
-    healthcheck:
-      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  price-monitor:
-    image: ghcr.io/gmourtz/price_monitor:latest
-    container_name: price-monitor
-    restart: unless-stopped
-    mem_limit: 128m
-    networks:
-      - price-monitor-net
-    volumes:
-      - price-monitor-data:/data
-    environment:
-      TELEGRAM_BOT_TOKEN: "{{ vault_telegram_bot_token }}"
-      TELEGRAM_CHAT_ID: "{{ vault_telegram_chat_id }}"
-      OPENAI_API_KEY: "ollama"
-      OPENAI_BASE_URL: "http://localllm.internal:11434/v1"
-      OPENAI_MODEL: "qwen3:1.7b"
-      POLL_INTERVAL: "21600"
-      DATA_DIR: "/data"
-      WATCHLIST_PATH: "/data/watchlist.json"
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
       interval: 30s
@@ -570,7 +550,9 @@ services:
       retries: 3
 
   paperless-ngx:
-    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    # Custom image — Greek OCR pack baked in (paperless-net is internal, so the
+    # base image's runtime apt language install can't reach mirrors). See apps/paperless-ngx/.
+    image: ghcr.io/gmourtz/paperless-ngx:latest
     container_name: paperless-ngx
     restart: unless-stopped
     networks:
@@ -591,7 +573,8 @@ services:
       PAPERLESS_USE_X_FORWARD_PORT: "true"
       PAPERLESS_PROXY_SSL_HEADER: '["HTTP_X_FORWARDED_PROTO", "https"]'
       PAPERLESS_TIME_ZONE: "{{ timezone }}"
-      PAPERLESS_OCR_LANGUAGES: "ell"
+      # PAPERLESS_OCR_LANGUAGES (runtime install) intentionally omitted —
+      # tesseract-ocr-ell is baked into the custom image at build time.
       PAPERLESS_OCR_LANGUAGE: "eng+ell"
       PAPERLESS_OCR_USER_ARGS: '{"language": "eng+ell"}'
       PAPERLESS_ADMIN_USER: "{{ vault_paperless_admin_user }}"
@@ -961,8 +944,6 @@ networks:
     driver: bridge
   portfolio-net:
     driver: bridge
-  price-monitor-net:
-    driver: bridge
   jellyfin-net:
     driver: bridge
   audiobookshelf-net:
@@ -1025,7 +1006,6 @@ volumes:
   uptime-kuma-data:
   actual-budget-data:
   portfolio-data:
-  price-monitor-data:
   navidrome-data:
   qbittorrent-config:
   prowlarr-config:

@@ -1,12 +1,26 @@
 ---
 # Host vars for optiplex
 
-# External storage — USB stick (230 GB, ext4), will be replaced with SSD later
+# External storage — two USB sticks pooled via mergerfs, presented at /mnt/media.
+# Each drive stays an independent ext4 filesystem (a "branch"); mergerfs unions
+# them so a single-drive failure loses only that drive's files. Branches must be
+# mounted before the pool — site.yml mounts storage_branches first, then data_mount.
+storage_branches:
+  - src: UUID=66508e4d-74f7-45c0-a46f-f316c19b99bf   # existing media drive — never reformatted
+    path: /mnt/disk1
+    fstype: ext4
+    opts: defaults,noatime,nofail
+  - src: UUID=12fa574d-df8d-452a-8114-daf9e23d4c6b   # new drive — formatted ext4 (label pool-disk2)
+    path: /mnt/disk2
+    fstype: ext4
+    opts: defaults,noatime,nofail
+
+# mergerfs pool — unions the branches at /mnt/media (the path every service binds)
 data_mount:
-  src: UUID=66508e4d-74f7-45c0-a46f-f316c19b99bf
+  src: "/mnt/disk1:/mnt/disk2"
   path: /mnt/media
-  fstype: ext4
-  opts: defaults,noatime,nofail
+  fstype: fuse.mergerfs
+  opts: "defaults,nofail,allow_other,use_ino,cache.files=partial,category.create=mfs,minfreespace=20G,fsname=mergerfs,x-systemd.requires-mounts-for=/mnt/disk1,x-systemd.requires-mounts-for=/mnt/disk2"
 
 # Directory tree created under the mount point
 data_dirs:
@@ -28,6 +42,7 @@ data_dirs:
 # Host-specific packages (extends group_vars packages list)
 extra_packages:
   - intel-opencl-icd  # Intel GPU OpenCL runtime — enables HDR tone-mapping in Jellyfin QSV transcoding
+  - mergerfs          # union filesystem — pools the storage_branches drives into /mnt/media
 
 # UFW extra rules — ports needed by stacks on this host
 ufw_extra_rules:
