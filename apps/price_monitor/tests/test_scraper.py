@@ -1,10 +1,47 @@
 """Tests for scraper.py — price parsing and product extraction."""
 
+from contextlib import ExitStack
 from unittest.mock import patch, MagicMock
 
 import pytest
 
 from scraper import _parse_price, _extract_currency, scrape_product, Product
+
+
+def _mock_page(title_text, price_text, html=""):
+    """Create a mock Playwright page with given title and price."""
+    title_el = MagicMock()
+    title_el.inner_text.return_value = title_text
+
+    price_el = None
+    if price_text is not None:
+        price_el = MagicMock()
+        price_el.inner_text.return_value = price_text
+
+    page = MagicMock()
+    page.content.return_value = html or '"priceCurrency": "USD"'
+    page.goto = MagicMock()
+    page.wait_for_selector = MagicMock()
+
+    def query_selector_side_effect(selector):
+        if selector == "#productTitle":
+            return title_el
+        if "a-offscreen" in selector and price_el:
+            return price_el
+        return None
+
+    page.query_selector.side_effect = query_selector_side_effect
+    return page
+
+
+def _patch_scraper(page):
+    """Context manager that patches _get_context and _set_us_location."""
+    context = MagicMock()
+    context.new_page.return_value = page
+    stack = ExitStack()
+    stack.enter_context(patch("scraper._get_context", return_value=context))
+    stack.enter_context(patch("scraper._set_us_location"))
+    return stack
 
 
 class TestParsePrice:
@@ -47,6 +84,15 @@ class TestParsePrice:
         # "9,5" could be 9.5 in EU format
         assert _parse_price("9,5") == 9.5
 
+    def test_dollar_sign_stripped(self):
+        assert _parse_price("$249.98") == 249.98
+
+    def test_euro_sign_stripped(self):
+        assert _parse_price("€29,99") == 29.99
+
+    def test_pound_sign_stripped(self):
+        assert _parse_price("£1,299.00") == 1299.0
+
 
 class TestExtractCurrency:
     """Test currency detection from HTML."""
@@ -68,69 +114,43 @@ class TestExtractCurrency:
 
 
 class TestScrapeProduct:
-    """Test full product scraping with mocked HTTP."""
+    """Test full product scraping with mocked Playwright."""
 
-    def test_dom_price_extraction(self):
-        """Test extraction from a-price-whole + a-price-fraction classes."""
-        html = '''
-        <span id="productTitle" class="a-size-large">Test Widget</span>
-        <span class="a-price-whole">174,</span>
-        <span class="a-price-fraction">52</span>
-        "priceCurrency": "USD"
-        '''
-        mock_resp = MagicMock()
-        mock_resp.text = html
-        mock_resp.raise_for_status = MagicMock()
-
-        with patch("scraper.requests.get", return_value=mock_resp):
+    def test_deal_price_extraction(self):
+        """The JS-rendered deal price should be extracted."""
+        page = _mock_page("Test Widget", "$249.98")
+        with _patch_scraper(page):
             product = scrape_product("https://www.amazon.com/dp/TEST123")
-
         assert product.title == "Test Widget"
-        assert product.price == 174.52
+        assert product.price == 249.98
         assert product.currency == "USD"
 
-    def test_structured_data_price_preferred(self):
-        """Structured data price should be tried before DOM classes."""
-        html = '''
-        <span id="productTitle" class="a-size-large">Widget</span>
-        "priceAmount": "99.99"
-        <span class="a-price-whole">174,</span>
-        <span class="a-price-fraction">52</span>
-        "priceCurrency": "EUR"
-        ''' + "x" * 5000
-        mock_resp = MagicMock()
-        mock_resp.text = html
-        mock_resp.raise_for_status = MagicMock()
+    def test_regular_price_extraction(self):
+        """Regular prices (no deal) should work too."""
+        page = _mock_page("Regular Item", "$649.99")
+        with _patch_scraper(page):
+            product = scrape_product("https://www.amazon.com/dp/REGULAR")
+        assert product.price == 649.99
 
-        with patch("scraper.requests.get", return_value=mock_resp):
-            product = scrape_product("https://www.amazon.de/dp/TEST456")
-
-        assert product.price == 99.99  # structured data wins
+    def test_eu_price_extraction(self):
+        """EU prices with comma decimal should parse correctly."""
+        page = _mock_page("EU Widget", "29,99\xa0€", html='"priceCurrency": "EUR"')
+        with _patch_scraper(page):
+            product = scrape_product("https://www.amazon.de/dp/EU123")
+        assert product.price == 29.99
+        assert product.currency == "EUR"
 
     def test_no_price_returns_none(self):
-        """When no price pattern matches, price should be None."""
-        html = '<span id="productTitle" class="a-size-large">No Price Item</span>'
-        mock_resp = MagicMock()
-        mock_resp.text = html
-        mock_resp.raise_for_status = MagicMock()
-
-        with patch("scraper.requests.get", return_value=mock_resp):
+        """When no price element exists, price should be None."""
+        page = _mock_page("No Price Item", None)
+        with _patch_scraper(page):
             product = scrape_product("https://www.amazon.com/dp/NOPRICE")
-
         assert product.title == "No Price Item"
         assert product.price is None
 
-    def test_dom_price_whole_only(self):
-        """When fraction is missing, default to .00."""
-        html = '''
-        <span id="productTitle" class="a-size-large">Round Price</span>
-        <span class="a-price-whole">200,</span>
-        '''
-        mock_resp = MagicMock()
-        mock_resp.text = html
-        mock_resp.raise_for_status = MagicMock()
-
-        with patch("scraper.requests.get", return_value=mock_resp):
-            product = scrape_product("https://www.amazon.com/dp/ROUND")
-
-        assert product.price == 200.0
+    def test_price_with_thousands(self):
+        """Prices like $1,299.00 should parse correctly."""
+        page = _mock_page("Expensive Item", "$1,299.00")
+        with _patch_scraper(page):
+            product = scrape_product("https://www.amazon.com/dp/EXPENSIVE")
+        assert product.price == 1299.0

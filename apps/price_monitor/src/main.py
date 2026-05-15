@@ -85,28 +85,50 @@ def run_cycle(
 
             log.info("  %s: %s %.2f", item.label, product.currency, product.price)
 
-            # Compare to last known price
-            last = store.get_last_price(item.url)
-
             # Always record the price
             store.append(item.url, product.title, product.price, product.currency)
 
-            if last is None:
-                log.info("  First observation for %s — recorded baseline", item.label)
+            # Need at least 4 observations to establish a confident baseline
+            # (avoids false alerts on first run or after stale data)
+            history = store.get_history(item.url, limit=10)
+            if len(history) < 4:
+                log.info("  Collecting baseline for %s (%d/4 observations)", item.label, len(history))
                 continue
 
-            if product.price >= last.price:
-                if product.price > last.price:
-                    log.info("  Price went UP: %.2f → %.2f", last.price, product.price)
+            # Use the most common price across ALL history (except current) as baseline
+            # The baseline must appear at least 2 times to be considered reliable
+            prev_prices = [r.price for r in history[:-1]]
+            price_counts = {}
+            for p in prev_prices:
+                price_counts[p] = price_counts.get(p, 0) + 1
+            baseline = max(price_counts, key=price_counts.get)
+            baseline_count = price_counts[baseline]
+
+            if baseline_count < 2:
+                log.info("  No stable baseline yet for %s — most frequent price %.2f seen only %d time(s)",
+                         item.label, baseline, baseline_count)
+                continue
+
+            if product.price >= baseline:
+                if product.price > baseline:
+                    log.info("  Price went UP: %.2f → %.2f", baseline, product.price)
                 else:
                     log.info("  Price unchanged: %.2f", product.price)
                 continue
 
-            # Price dropped!
-            drop = last.price - product.price
-            drop_pct = (drop / last.price) * 100
+            # Price is lower — but is it stable? Check if last 2 observations
+            # both show this lower price (to filter Amazon's flickering)
+            recent_two = [r.price for r in history[-2:]]
+            if len(set(recent_two)) != 1:
+                log.info("  Price dipped to %.2f but not confirmed yet (was %.2f) — waiting for stability",
+                         product.price, baseline)
+                continue
+
+            # Confirmed price drop!
+            drop = baseline - product.price
+            drop_pct = (drop / baseline) * 100
             stats["drops"] += 1
-            log.info("  💰 PRICE DROP: %.2f → %.2f (%.1f%%)", last.price, product.price, drop_pct)
+            log.info("  💰 CONFIRMED PRICE DROP: %.2f → %.2f (%.1f%%)", baseline, product.price, drop_pct)
 
             # Get LLM analysis if configured
             analysis = ""
@@ -114,7 +136,7 @@ def run_cycle(
                 analysis = analyze_deal(
                     title=product.title,
                     current_price=product.price,
-                    previous_price=last.price,
+                    previous_price=baseline,
                     currency=product.currency,
                     url=item.url,
                     base_url=openai_base_url,
@@ -127,7 +149,7 @@ def run_cycle(
                 f"🏷️ *Price Drop: {item.label}*",
                 "",
                 f"📦 {product.title}",
-                f"💰 {product.currency} {last.price:.2f} → *{product.currency} {product.price:.2f}*",
+                f"💰 {product.currency} {baseline:.2f} → *{product.currency} {product.price:.2f}*",
                 f"📉 Down {product.currency} {drop:.2f} ({drop_pct:.1f}%)",
                 "",
                 f"🔗 {item.url}",

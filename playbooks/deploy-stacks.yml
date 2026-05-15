@@ -199,6 +199,17 @@
       when: inventory_hostname == 'optiplex'
       notify: Restart jellyfin
 
+    # --- Price monitor watchlist (optiplex only) ---
+    - name: Write price monitor watchlist to volume
+      ansible.builtin.copy:
+        src: "{{ stacks_src }}/price-monitor-watchlist.json"
+        dest: /var/lib/docker/volumes/stacks_price-monitor-data/_data/watchlist.json
+        owner: "1000"
+        group: "1000"
+        mode: "0644"
+      when: inventory_hostname == 'optiplex'
+      notify: Restart price-monitor
+
     - name: Configure Pi-hole allowlist
       ansible.builtin.command:
         cmd: docker exec pihole pihole allow {{ item }}
@@ -374,6 +385,10 @@
 
     - name: Restart openclaw
       ansible.builtin.command: docker restart openclaw
+      changed_when: true
+
+    - name: Restart price-monitor
+      ansible.builtin.command: docker restart price-monitor
       changed_when: true
 
 

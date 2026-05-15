@@ -1,36 +1,25 @@
-"""Amazon product price scraper."""
+"""Amazon product price scraper using headless Chromium.
+
+Uses Playwright to render the full page (including JS-rendered deal prices,
+coupons, and 'Limited time deal' discounts that are invisible to plain HTTP).
+
+Amazon geo-locates by IP and hides prices for products that can't ship to the
+detected country.  We work around this by first visiting amazon.com and setting
+the delivery ZIP code to a US address via the location popup, which stores the
+preference in session cookies for subsequent page loads.
+"""
 
 import logging
+import os
 import re
 from dataclasses import dataclass
 
-import requests
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 
 log = logging.getLogger(__name__)
 
-# Rotate user agents to reduce blocking
-_USER_AGENTS = [
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-]
-
-# Structured data price patterns (JSON-LD)
-_PRICE_PATTERNS = [
-    re.compile(r'"priceAmount"\s*:\s*"?([\d.,]+)"?'),
-    re.compile(r'"price"\s*:\s*"?([\d.,]+)"?'),
-]
-
-# HTML DOM price patterns (a-price-whole + a-price-fraction)
-_PRICE_WHOLE_PATTERN = re.compile(
-    r'class="a-price-whole"[^>]*>([\d,]+)', re.DOTALL
-)
-_PRICE_FRACTION_PATTERN = re.compile(
-    r'class="a-price-fraction"[^>]*>(\d+)', re.DOTALL
-)
-
-# Title extraction
-_TITLE_PATTERN = re.compile(r'<span[^>]*id="productTitle"[^>]*>\s*(.+?)\s*</span>', re.DOTALL)
+# Default US ZIP code — can be overridden via env var
+_US_ZIP = os.environ.get("AMAZON_ZIP", "10001")
 
 
 @dataclass
@@ -44,20 +33,20 @@ class Product:
 
 
 def _parse_price(text: str) -> float | None:
-    """Parse a price string like '29,99' or '1.299,00' into a float."""
+    """Parse a price string like '$29.99' or '1.299,00' into a float."""
     if not text:
         return None
-    # Remove thousands separators (dots in EU, commas in US)
-    # Heuristic: if last separator is comma and has 2-3 digits after → EU format
+    # Strip currency symbols and whitespace
+    text = re.sub(r'[^\d.,]', '', text).strip()
+    if not text:
+        return None
+    # Remove thousands separators
     if "," in text and "." in text:
         if text.rfind(",") > text.rfind("."):
-            # EU: 1.299,00 → 1299.00
             text = text.replace(".", "").replace(",", ".")
         else:
-            # US: 1,299.00
             text = text.replace(",", "")
     elif "," in text:
-        # Could be EU decimal: 29,99
         parts = text.split(",")
         if len(parts) == 2 and len(parts[1]) <= 2:
             text = text.replace(",", ".")
@@ -81,49 +70,137 @@ def _extract_currency(html: str) -> str:
     return "USD"
 
 
-def scrape_product(url: str, timeout: int = 15) -> Product:
-    """Fetch an Amazon product page and extract title + price.
+# Shared browser context (reused across calls within a process)
+_browser = None
+_context = None
+_playwright = None
+_location_set = False
+
+
+def _get_context():
+    """Lazily start a shared headless Chromium browser and context.
+
+    The context persists cookies between calls so the US delivery location
+    only needs to be set once per process lifetime.
+    """
+    global _browser, _context, _playwright
+    if _browser is None or not _browser.is_connected():
+        _playwright = sync_playwright().start()
+        _browser = _playwright.chromium.launch(headless=True)
+        log.info("Headless Chromium started")
+    if _context is None:
+        _context = _browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/125.0.0.0 Safari/537.36"
+            ),
+            locale="en-US",
+            viewport={"width": 1280, "height": 800},
+            timezone_id="America/New_York",
+        )
+        _context.add_cookies([
+            {"name": "i18n-prefs", "value": "USD", "domain": ".amazon.com", "path": "/"},
+            {"name": "lc-main", "value": "en_US", "domain": ".amazon.com", "path": "/"},
+            {"name": "sp-cdn", "value": '"L5Z9:US"', "domain": ".amazon.com", "path": "/"},
+        ])
+    return _context
+
+
+def _set_us_location(context) -> None:
+    """Set the Amazon delivery location to a US ZIP code.
+
+    Opens amazon.com, clicks the location popup, enters the ZIP code, and
+    closes the modal.  The resulting session cookies keep the location for
+    all subsequent page loads in this context.
+    """
+    global _location_set
+    if _location_set:
+        return
+
+    page = context.new_page()
+    try:
+        page.goto("https://www.amazon.com", wait_until="domcontentloaded", timeout=30_000)
+        page.wait_for_timeout(2000)
+
+        page.click("#glow-ingress-block", timeout=5000)
+        page.wait_for_timeout(2000)
+
+        page.fill("#GLUXZipUpdateInput", _US_ZIP)
+        page.wait_for_timeout(500)
+
+        page.click(
+            "#GLUXZipUpdate input[type='submit'], #GLUXZipUpdate .a-button-input",
+            timeout=5000,
+        )
+        page.wait_for_timeout(3000)
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(500)
+
+        deliver = page.query_selector("#glow-ingress-line2")
+        if deliver:
+            log.info("Delivery location set to: %s", deliver.inner_text().strip())
+
+        _location_set = True
+    except Exception:
+        log.warning("Failed to set US delivery location — prices may be unavailable", exc_info=True)
+    finally:
+        page.close()
+
+
+def scrape_product(url: str, timeout: int = 30) -> Product:
+    """Fetch an Amazon product page with headless Chromium and extract title + price.
+
+    On first call, sets the delivery location to a US ZIP code so Amazon shows
+    US prices and availability.  Renders JavaScript so deal prices, coupons,
+    and limited-time deals are visible.
 
     Returns a Product with price=None if extraction fails.
     """
-    import hashlib
+    context = _get_context()
+    _set_us_location(context)
 
-    # Pick a deterministic but rotating user agent based on URL
-    ua_index = int(hashlib.md5(url.encode()).hexdigest(), 16) % len(_USER_AGENTS)
+    page = context.new_page()
 
-    headers = {
-        "User-Agent": _USER_AGENTS[ua_index],
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept": "text/html,application/xhtml+xml",
-    }
+    try:
+        page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000)
 
-    resp = requests.get(url, headers=headers, timeout=timeout)
-    resp.raise_for_status()
-    html = resp.text
+        # Wait for the price to render (Amazon loads prices dynamically)
+        try:
+            page.wait_for_selector(".a-price .a-offscreen", timeout=10000)
+        except PlaywrightTimeout:
+            log.debug("Price selector didn't appear within 10s, proceeding with what we have")
 
-    # Extract title
-    title_match = _TITLE_PATTERN.search(html)
-    title = title_match.group(1).strip() if title_match else "Unknown Product"
+        html = page.content()
 
-    # Extract price — try structured data patterns first
-    price = None
-    for pattern in _PRICE_PATTERNS:
-        m = pattern.search(html)
-        if m:
-            price = _parse_price(m.group(1))
-            if price is not None and price > 0:
-                break
-            price = None
+        # Extract title
+        title_el = page.query_selector("#productTitle")
+        title = title_el.inner_text().strip() if title_el else "Unknown Product"
 
-    # Fall back to DOM price classes (a-price-whole + a-price-fraction)
-    if price is None:
-        whole_match = _PRICE_WHOLE_PATTERN.search(html)
-        fraction_match = _PRICE_FRACTION_PATTERN.search(html)
-        if whole_match:
-            whole = whole_match.group(1).replace(",", "")
-            fraction = fraction_match.group(1) if fraction_match else "00"
-            price = _parse_price(f"{whole}.{fraction}")
+        # Extract price — priority order:
+        #   1. corePrice_feature_div — deal / current price (most reliable)
+        #   2. corePrice_desktop — regular price display
+        #   3. corePriceDisplay_desktop — alternate layout
+        #   4. apex_desktop — fallback (list / was-price area)
+        price = None
+        for selector in [
+            "#corePrice_feature_div .a-price .a-offscreen",
+            "#corePrice_desktop .a-price .a-offscreen",
+            "#corePriceDisplay_desktop .a-price .a-offscreen",
+            "#apex_desktop .a-price .a-offscreen",
+        ]:
+            el = page.query_selector(selector)
+            if el:
+                price_text = el.inner_text().strip()
+                price = _parse_price(price_text)
+                if price is not None and price > 0:
+                    log.debug("Price from selector '%s': %s → %.2f", selector, price_text, price)
+                    break
+                price = None
 
-    currency = _extract_currency(html)
+        currency = _extract_currency(html)
 
-    return Product(url=url, title=title, price=price, currency=currency)
+        return Product(url=url, title=title, price=price, currency=currency)
+
+    finally:
+        page.close()
