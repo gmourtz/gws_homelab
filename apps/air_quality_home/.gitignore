@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local dev data — the real DB lives in a Docker volume
+data/
+*.db
+
+# OS
+.DS_Store

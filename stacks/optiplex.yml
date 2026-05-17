@@ -84,6 +84,7 @@ services:
       - actual-budget-net
       - navidrome-net
       - arr-net
+      - air-quality-net
     ports:
       - "80:80"
       - "443:443"
@@ -247,6 +248,53 @@ services:
       DATA_DIR: "/data"
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- Air quality monitoring ---
+  # Collector polls the Awair Element sensors and writes the SQLite DB.
+  air-quality-collector:
+    image: ghcr.io/gmourtz/air_quality_home:latest
+    container_name: air-quality-collector
+    restart: unless-stopped
+    mem_limit: 128m
+    networks:
+      - air-quality-net
+    volumes:
+      - air-quality-data:/data
+    environment:
+      AWAIR_DEVICES: '{{ awair_devices | default([]) | to_json }}'
+      POLL_INTERVAL: "120"
+      DATA_DIR: "/data"
+      HEALTH_PORT: "8502"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8502/', timeout=4).status == 200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Streamlit dashboard — Sablier-managed on-demand (started on first request
+  # via Caddy, stopped after idle). `restart: "no"` so Docker doesn't fight Sablier.
+  air-quality-dashboard:
+    image: ghcr.io/gmourtz/air_quality_home:latest
+    container_name: air-quality-dashboard
+    restart: "no"
+    mem_limit: 384m
+    command: ["streamlit", "run", "src/app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+    networks:
+      - air-quality-net
+    volumes:
+      - air-quality-data:/data:ro
+    environment:
+      DATA_DIR: "/data"
+      STREAMLIT_SERVER_HEADLESS: "true"
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+    labels:
+      sablier.enable: "true"
+      sablier.group: "air-quality"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8501/_stcore/health', timeout=4).status == 200 else 1)\""]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -981,6 +1029,8 @@ networks:
     driver: bridge
   arr-net:
     driver: bridge
+  air-quality-net:
+    driver: bridge
 
 volumes:
   caddy-data:
@@ -1018,4 +1068,5 @@ volumes:
   paperless-gpt-prompts:
   paperless-gpt-config:
   paperless-gpt-db:
+  air-quality-data:
 

@@ -36,7 +36,7 @@ local_domain: internal
 # - name: the primary hostname (typically the inventory hostname)
 # - aliases: optional service names that resolve to the same IP
 dns_records:
-  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, musicseerr, paperless, paperless-gpt, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr, chat] }
+  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, musicseerr, paperless, paperless-gpt, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr, chat, air-quality, air-quality-collector] }
   - { name: rpi3,     ip: "192.168.10.10", tag: hosts, aliases: [pihole] }
   - { name: kali,     ip: "192.168.50.11", tag: hosts, aliases: [juice-shop, webgoat] }
   - { name: openclaw, ip: "192.168.40.30", tag: hosts }
@@ -67,6 +67,7 @@ proxy_services:
   - { name: bazarr,       upstream: "gluetun:6767",       tag: downloads }
   - { name: chat,         upstream: "localllm.internal:8080", tag: ai }   # Open WebUI on localllm
   - { name: paperless-gpt, upstream: "paperless-gpt:8080",  tag: ai }
+  - { name: air-quality-collector, upstream: "air-quality-collector:8502", tag: monitoring }
 
 # qBittorrent download categories — written to /config/qBittorrent/categories.json on first run only.
 # Used by Radarr/Sonarr/Lidarr to route downloads into separate folders.
@@ -92,6 +93,7 @@ navidrome_plugins:
 ondemand_services:
   - { name: stirling-pdf, upstream: "stirling-pdf:8080", group: "stirling-pdf", session_duration: "30m", tag: tools }
   - { name: drawio,       upstream: "drawio:8080",       group: "drawio",       session_duration: "30m", tag: tools }
+  - { name: air-quality,  upstream: "air-quality-dashboard:8501", group: "air-quality", session_duration: "30m", tag: monitoring }
 
 # Services shared with family/friends via Tailscale node sharing.
 # For each entry, stacks/optiplex.yml templates a Tailscale sidecar container that
@@ -117,6 +119,16 @@ removed_kuma_monitors:
   # keeping them permanently warm. Removed so they can actually go idle.
   - stirling-pdf
   - drawio
+
+# Awair Element air-quality sensors — polled by the air-quality-collector
+# container on optiplex (stacks/optiplex.yml templates this list into the
+# AWAIR_DEVICES env var via `to_json`).
+# NOTE: these sensors are still on the legacy ZTE network (192.168.1.x), whose
+# DHCP is not IaC-managed. If an IP drifts, update it here and run `make stacks`.
+# When the sensors move to the GWS-IoT VLAN, change the IPs to 192.168.20.x.
+awair_devices:
+  - { name: "Awair Element 1", hostname: "192.168.1.100", device_mac: "70:88:6b:14:ca:f0" }
+  - { name: "Awair Element 2", hostname: "192.168.1.101", device_mac: "70:88:6b:14:cb:f1" }
 
 # ---------------------------------------------------------------------------
 # Paperless-ngx taxonomy (append-only)
