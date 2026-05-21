@@ -28,7 +28,7 @@ import sqlite3
 import sys
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytz
 import requests
@@ -156,7 +156,11 @@ def start_health_server(devices, poll_interval, port):
         def log_message(self, *args):
             pass  # silence per-request access logging
 
-    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    # ThreadingHTTPServer (not HTTPServer): the handler keeps HTTP/1.1
+    # connections alive, so a single-threaded server would wedge whenever a
+    # client (Caddy, Kuma) parks a persistent connection — blocking the Docker
+    # healthcheck's own request and flapping the container to 'unhealthy'.
+    server = ThreadingHTTPServer(("0.0.0.0", port), HealthHandler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     logging.info(f"Health endpoint listening on :{port}")
     return server

@@ -2,7 +2,9 @@
 
 import datetime
 import json
+import socket
 import sqlite3
+import urllib.request
 from unittest.mock import MagicMock
 
 import pytest
@@ -284,3 +286,26 @@ class TestComputeHealth:
             self.DEVICES, last, self.NOW, self.NOW, 360
         )
         assert healthy is False
+
+
+class TestHealthServerThreading:
+    """Regression: the health server must answer even while another client
+    holds a connection open. A single-threaded server keeps HTTP/1.1
+    connections alive and wedges — flapping the container to 'unhealthy'.
+    """
+
+    def test_serves_while_a_connection_is_held_open(self):
+        port = 8593
+        collect_data.start_health_server(
+            [{"name": "A", "hostname": "h"}], poll_interval=120, port=port
+        )
+        # Park a raw connection without sending a request — mimics a keep-alive
+        # client (Caddy / Kuma) sitting idle on the socket.
+        hog = socket.create_connection(("localhost", port))
+        try:
+            # A single-threaded server would block here until the timeout.
+            resp = urllib.request.urlopen(f"http://localhost:{port}/", timeout=3)
+            assert resp.status == 200
+            resp.read()
+        finally:
+            hog.close()
