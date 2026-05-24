@@ -205,6 +205,17 @@
         server: optiplex
         container: actual-budget
 
+    - Miniflux:
+        href: https://miniflux.{{ local_domain }}/
+        icon: miniflux.png
+        description: RSS reader
+        server: optiplex
+        container: miniflux
+        widget:
+          type: miniflux
+          url: http://miniflux:8080
+          key: {{ vault_homepage_miniflux_api_key }}
+
 - Downloads:
     - YouTube Videos:
         href: https://jellyfin.{{ local_domain }}/

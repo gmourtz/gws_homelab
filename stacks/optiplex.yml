@@ -85,6 +85,7 @@ services:
       - navidrome-net
       - arr-net
       - air-quality-net
+      - miniflux-net
     ports:
       - "80:80"
       - "443:443"
@@ -745,6 +746,7 @@ services:
       - uptime-kuma-net
       - actual-budget-net
       - arr-net
+      - miniflux-net
     volumes:
       - homepage-config:/app/config
     environment:
@@ -983,6 +985,49 @@ services:
       timeout: 5s
       retries: 3
 
+  # --- RSS reader ---
+  miniflux-postgres:
+    image: postgres:17-alpine
+    container_name: miniflux-postgres
+    restart: unless-stopped
+    networks:
+      - miniflux-net
+    volumes:
+      - miniflux-postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: miniflux
+      POSTGRES_PASSWORD: "{{ vault_miniflux_db_password }}"
+      POSTGRES_DB: miniflux
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U miniflux -d miniflux"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  miniflux:
+    image: miniflux/miniflux:latest
+    container_name: miniflux
+    restart: unless-stopped
+    networks:
+      - miniflux-net
+    depends_on:
+      miniflux-postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgres://miniflux:{{ vault_miniflux_db_password }}@miniflux-postgres/miniflux?sslmode=disable"
+      RUN_MIGRATIONS: "1"
+      CREATE_ADMIN: "1"
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "{{ vault_miniflux_admin_password }}"
+      BASE_URL: "https://miniflux.{{ local_domain }}/"
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "/usr/bin/miniflux", "-healthcheck", "auto"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 networks:
   beszel-net:
     driver: bridge
@@ -1031,6 +1076,8 @@ networks:
     driver: bridge
   air-quality-net:
     driver: bridge
+  miniflux-net:
+    driver: bridge
 
 volumes:
   caddy-data:
@@ -1069,4 +1116,5 @@ volumes:
   paperless-gpt-config:
   paperless-gpt-db:
   air-quality-data:
+  miniflux-postgres-data:
 

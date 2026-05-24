@@ -374,6 +374,86 @@
       changed_when: _pless_cf.rc == 0
       when: inventory_hostname == 'optiplex'
 
+    # --- Miniflux feeds & categories (optiplex only) ---
+    - name: Get Miniflux container info
+      community.docker.docker_container_info:
+        name: miniflux
+      register: _miniflux_info
+      when:
+        - inventory_hostname == 'optiplex'
+        - miniflux_feeds is defined
+
+    - name: Set Miniflux container URL (host → bridge IP, bypassing Caddy)
+      ansible.builtin.set_fact:
+        _miniflux_url: "http://{{ (_miniflux_info.container.NetworkSettings.Networks | dict2items | first).value.IPAddress }}:8080"
+      when:
+        - inventory_hostname == 'optiplex'
+        - miniflux_feeds is defined
+
+    - name: Ensure Miniflux categories exist
+      ansible.builtin.uri:
+        url: "{{ _miniflux_url }}/v1/categories"
+        method: POST
+        user: admin
+        password: "{{ vault_miniflux_admin_password }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          title: "{{ item }}"
+        status_code: [201, 400]
+      loop: "{{ miniflux_feeds | default([]) | map(attribute='category') | unique | list }}"
+      loop_control:
+        label: "{{ item }}"
+      register: _miniflux_cat
+      changed_when: _miniflux_cat.status == 201
+      when:
+        - inventory_hostname == 'optiplex'
+        - miniflux_feeds is defined
+
+    - name: Fetch Miniflux categories (for name→id lookup)
+      ansible.builtin.uri:
+        url: "{{ _miniflux_url }}/v1/categories"
+        method: GET
+        user: admin
+        password: "{{ vault_miniflux_admin_password }}"
+        force_basic_auth: true
+        return_content: true
+      register: _miniflux_cats
+      changed_when: false
+      when:
+        - inventory_hostname == 'optiplex'
+        - miniflux_feeds is defined
+
+    - name: Build Miniflux category name→id map
+      ansible.builtin.set_fact:
+        _miniflux_cat_map: "{{ _miniflux_cats.json | items2dict(key_name='title', value_name='id') }}"
+      when:
+        - inventory_hostname == 'optiplex'
+        - miniflux_feeds is defined
+
+    - name: Ensure Miniflux feeds exist
+      ansible.builtin.uri:
+        url: "{{ _miniflux_url }}/v1/feeds"
+        method: POST
+        user: admin
+        password: "{{ vault_miniflux_admin_password }}"
+        force_basic_auth: true
+        headers:
+          Content-Type: application/json
+        # body built as JSON string so category_id stays an int (Miniflux's Go
+        # JSON parser rejects string ints). body_format: raw passes through.
+        body: "{{ {'feed_url': item.url, 'category_id': _miniflux_cat_map[item.category]} | to_json }}"
+        body_format: raw
+        status_code: [201, 400]
+      loop: "{{ miniflux_feeds | default([]) }}"
+      loop_control:
+        label: "{{ item.url }}"
+      register: _miniflux_feed
+      changed_when: _miniflux_feed.status == 201
+      when:
+        - inventory_hostname == 'optiplex'
+        - miniflux_feeds is defined
+
   handlers:
     - name: Restart homepage
       ansible.builtin.command: docker restart homepage
