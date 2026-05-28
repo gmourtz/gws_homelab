@@ -244,3 +244,6 @@ miniflux_feeds:
   - { url: "https://lethain.com/feeds/",                         category: "Engineering" }
   - { url: "https://benn.substack.com/feed",                     category: "Data" }
   - { url: "https://simonwillison.net/atom/everything/",         category: "AI" }
+  - { url: "https://www.reddit.com/r/OpenSignups/new/.rss",      category: "Trackers" }
+  - { url: "https://www.reddit.com/r/trackers/new/.rss",         category: "Trackers" }
+  - { url: "https://opentrackers.org/feed/",                     category: "Trackers" }
