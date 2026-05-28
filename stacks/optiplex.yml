@@ -571,7 +571,7 @@ services:
     volumes:
       - musicseerr-config:/app/config
       - musicseerr-cache:/app/cache
-      - /mnt/media/music:/music:ro
+      - /mnt/media/music:/music
     environment:
       PUID: "1000"
       PGID: "1000"
