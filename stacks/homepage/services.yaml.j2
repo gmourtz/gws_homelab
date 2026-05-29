@@ -139,6 +139,19 @@
           key: {{ vault_pihole_password }}
           fields: ["queries", "blocked", "blocked_percent", "gravity"]
 
+- Lab:
+    # kali (RPi 5, VLAN 50) — deliberately-vulnerable targets, on-demand.
+    # They live behind the `lab` Compose profile, so they're usually stopped;
+    # start a session with: docker compose --profile lab up -d juice-shop webgoat
+    - Juice Shop:
+        href: http://kali.{{ local_domain }}:3000/
+        icon: mdi-bottle-soda-classic
+        description: OWASP Juice Shop — on-demand (kali)
+    - WebGoat:
+        href: http://kali.{{ local_domain }}:8080/WebGoat
+        icon: mdi-shield-bug
+        description: OWASP WebGoat / WebWolf — on-demand (kali)
+
 - AI:
     - Open WebUI:
         href: https://chat.{{ local_domain }}/
