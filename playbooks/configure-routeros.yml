@@ -170,7 +170,7 @@
 
           - bridge: bridge1
             vlan-ids: "50"
-            untagged: "ether5"                # Kali rpi5 access port
+            untagged: "ether5"                # kali (RPi 5) access port
             tagged: "bridge1"                 # wired-only — no wifi SSID for now
             comment: "VLAN 50 - Lab"
 

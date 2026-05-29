@@ -5,7 +5,7 @@
 # Usage:
 #   ./scripts/flash.sh list                  # show external disks
 #   ./scripts/flash.sh rpi3  /dev/diskN      # flash RPi 3 SD card
-#   ./scripts/flash.sh rpi5  /dev/diskN      # flash RPi 5 SD card
+#   ./scripts/flash.sh kali  /dev/diskN      # flash Kali (RPi 5) SD card
 #   ./scripts/flash.sh optiplex /dev/diskN   # flash OptiPlex USB
 #   ./scripts/flash.sh download              # download both images
 #
@@ -24,7 +24,7 @@ OPTIPLEX_ISO="ubuntu-24.04.4-live-server-amd64.iso"
 OPTIPLEX_URL="https://releases.ubuntu.com/24.04/${OPTIPLEX_ISO}"
 OPTIPLEX_AUTOINSTALL_ISO="optiplex-autoinstall.iso"
 
-# --- Kali Linux ARM Pi image (used for rpi5 — pentesting lab) ---
+# --- Kali Linux ARM Pi image (used for the kali host — RPi 5 pentesting lab) ---
 # Bump this when a newer release is out: https://www.kali.org/get-kali/#kali-arm
 KALI_VERSION="2026.1"
 KALI_IMAGE="kali-linux-${KALI_VERSION}-raspberry-pi-arm64.img.xz"
@@ -36,7 +36,7 @@ usage() {
     echo "  $0 download             Download OS images to ./images/"
     echo "  $0 build-iso <host>     Build autoinstall ISO (optiplex, openclaw)"
     echo "  $0 rpi3     /dev/diskN  Flash RPi 3 image to SD card (Ubuntu)"
-    echo "  $0 rpi5     /dev/diskN  Flash RPi 5 image to SD card (Kali Linux — lab box)"
+    echo "  $0 kali     /dev/diskN  Flash Kali Linux image to RPi 5 SD card (lab box)"
     echo "  $0 optiplex /dev/diskN  Flash optiplex autoinstall ISO to USB stick"
     echo "  $0 openclaw /dev/diskN  Flash openclaw autoinstall ISO to USB stick"
     echo "  $0 localllm /dev/diskN  Flash localllm autoinstall ISO to USB stick"
@@ -45,7 +45,7 @@ usage() {
     echo "  1. $0 download             # fetch base images"
     echo "  2. $0 build-iso <host>     # repack ISO with autoinstall (optiplex, openclaw)"
     echo "  3. $0 list                 # identify your SD/USB disk"
-    echo "  4. $0 rpi3 /dev/diskN      # flash RPi 3 SD card (or rpi5 for Kali on the Pi 5)"
+    echo "  4. $0 rpi3 /dev/diskN      # flash RPi 3 SD card (or kali for the Pi 5)"
     echo "  5. $0 optiplex /dev/diskN  # flash OptiPlex USB"
     exit 1
 }
@@ -132,7 +132,7 @@ validate_disk() {
 }
 
 flash_rpi() {
-    local host="$1"        # rpi3 or rpi5 — also the cloud-init subdir name
+    local host="$1"        # rpi3 — also the cloud-init subdir name
     local disk="$2"
     local rdisk="${disk/disk/rdisk}"  # use raw disk for speed
 
@@ -295,7 +295,7 @@ case "$1" in
     download)  download_images ;;
     build-iso) [[ $# -ne 2 ]] && usage; "${SCRIPT_DIR}/build-iso.sh" "$2" ;;
     rpi3)      [[ $# -ne 2 ]] && usage; flash_rpi rpi3 "$2" ;;
-    rpi5)      [[ $# -ne 2 ]] && usage; flash_kali     "$2" ;;  # Kali — see flash_kali
+    kali)      [[ $# -ne 2 ]] && usage; flash_kali     "$2" ;;  # Kali on the RPi 5 — see flash_kali
     optiplex)  [[ $# -ne 2 ]] && usage; flash_x86 optiplex "$2" ;;
     openclaw)  [[ $# -ne 2 ]] && usage; flash_x86 openclaw "$2" ;;
     localllm)  [[ $# -ne 2 ]] && usage; flash_x86 localllm "$2" ;;

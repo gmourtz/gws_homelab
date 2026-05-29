@@ -8,7 +8,7 @@
 #   that gets reflashed when broken). This playbook does only what Kali needs.
 #
 # Prerequisites:
-#   - Image flashed with: ./scripts/flash.sh rpi5 /dev/diskN
+#   - Image flashed with: ./scripts/flash.sh kali /dev/diskN
 #     flash.sh injects cloud-init/kali/user-data which creates the gws user
 #     and SSH key on first boot — no sshpass or manual steps needed.
 #   - Pi plugged into MikroTik ether5 (VLAN 50 access port)

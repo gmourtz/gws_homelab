@@ -9,6 +9,13 @@
 #   3. Container ports bound to all interfaces (host firewall is the gate)
 #
 # Do NOT expose any of these to Tailscale, Caddy, or the internet.
+#
+# Lab targets are gated behind the `lab` Compose profile so `make stacks`
+# does NOT start them — they sit idle on a 2 GB Pi until you opt in.
+# To start a session, SSH to kali and run:
+#   cd /opt/stacks && docker compose --profile lab up -d juice-shop webgoat
+# To end the session:
+#   cd /opt/stacks && docker compose --profile lab stop juice-shop webgoat
 
 services:
   # OWASP Juice Shop — modern SPA + REST API, OWASP Top 10 by design.
@@ -16,7 +23,8 @@ services:
   juice-shop:
     image: bkimminich/juice-shop:latest
     container_name: juice-shop
-    restart: unless-stopped
+    profiles: ["lab"]
+    restart: "no"
     ports:
       - "3000:3000"
     healthcheck:
@@ -30,7 +38,8 @@ services:
   webgoat:
     image: webgoat/webgoat:latest
     container_name: webgoat
-    restart: unless-stopped
+    profiles: ["lab"]
+    restart: "no"
     environment:
       # Bind to 0.0.0.0 so the host UFW (not the JVM) controls exposure
       WEBGOAT_HOST: 0.0.0.0

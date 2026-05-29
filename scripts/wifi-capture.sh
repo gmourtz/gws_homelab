@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------------
-# wifi-capture.sh — passive 802.11 capture wrapper for the Kali lab box (rpi5).
+# wifi-capture.sh — passive 802.11 capture wrapper for the Kali lab box (kali — RPi 5).
 #
 # Runs ON the Kali host (not the Ansible controller). Installed by
 # playbooks/site-kali.yml at /usr/local/sbin/wifi-capture.sh.
