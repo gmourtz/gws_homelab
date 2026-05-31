@@ -1,9 +1,16 @@
 {
   "agents": {
     "defaults": {
-      "model": { "primary": "openai/gpt-4o" },
-      "models": { "openai/gpt-4o": {} },
+      "model": { "primary": "openai/gpt-5.4-mini" },
+      "models": { "openai/gpt-5.4-mini": {} },
       "compaction": { "mode": "safeguard" }
+    }
+  },
+  "models": {
+    "providers": {
+      "openai": {
+        "agentRuntime": { "id": "openclaw" }
+      }
     }
   },
   "commands": { "native": "auto", "nativeSkills": "auto", "restart": true, "ownerDisplay": "raw" },
@@ -18,7 +25,9 @@
     }
   },
   "gateway": {
+    "mode": "local",
     "bind": "lan",
+    "trustedProxies": ["172.18.0.0/16", "127.0.0.1"],
     "controlUi": {
       "allowedOrigins": [
         "https://{{ tailscale_fqdn }}",
@@ -37,7 +46,23 @@
   },
   "plugins": {
     "entries": {
-      "telegram": { "enabled": true }
+      "telegram": { "enabled": true },
+      "codex": { "enabled": false }
     }
-  }
+  }{% if openclaw_gcal_mcp_enabled | default(false) %},
+  {# Google Calendar via stdio MCP (nspady's HTTP transport is broken). Gated by openclaw_gcal_mcp_enabled. #}
+  "mcp": {
+    "servers": {
+      "google-calendar": {
+        "command": "npx",
+        "args": ["-y", "@cocal/google-calendar-mcp@2.6.1"],
+        "env": {
+          "TRANSPORT": "stdio",
+          "GOOGLE_OAUTH_CREDENTIALS": "/home/node/.openclaw/gcal/gcp-oauth.keys.json",
+          "GOOGLE_CALENDAR_MCP_TOKEN_PATH": "/home/node/.openclaw/gcal/tokens.json",
+          "NPM_CONFIG_CACHE": "/home/node/.openclaw/.npm"
+        }
+      }
+    }
+  }{% endif %}
 }

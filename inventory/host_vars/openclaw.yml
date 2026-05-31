@@ -13,3 +13,6 @@ tailscale_tags: "tag:gws-homelab-openclaw"
 tailscale_authkey: "{{ vault_tailscale_authkey_openclaw }}"
 tailscale_serve_port: 18789
 tailscale_ssh: true
+
+# Google Calendar MCP sidecar — enables the MCP server block in openclaw.json
+openclaw_gcal_mcp_enabled: true

@@ -8,6 +8,11 @@ services:
     restart: unless-stopped
     ports:
       - "18789:18789"
+      # gcal OAuth re-auth callback (localhost-only, via SSH tunnel; token expires ~7d in Testing mode). Re-auth:
+      #   docker exec -it openclaw env GOOGLE_OAUTH_CREDENTIALS=/home/node/.openclaw/gcal/gcp-oauth.keys.json \
+      #     GOOGLE_CALENDAR_MCP_TOKEN_PATH=/home/node/.openclaw/gcal/tokens.json npx -y @cocal/google-calendar-mcp@2.6.1 auth
+      - "127.0.0.1:3500:3500"
+      - "127.0.0.1:3501:3501"
     volumes:
       - openclaw-data:/home/node/.openclaw
     environment:
@@ -20,6 +25,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
+
+  # No gcal-mcp service: the Calendar MCP runs as a stdio child of openclaw (see openclaw.json.j2).
 
   # --- Monitoring ---
   docker-socket-proxy:

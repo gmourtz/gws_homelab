@@ -263,6 +263,33 @@
       changed_when: '"changed" in _gluetun_route_fix.stdout'
       when: inventory_hostname == 'optiplex'
 
+    # --- Google Calendar MCP creds (openclaw host only) ---
+    # OAuth client creds for the stdio gcal MCP, in the openclaw volume (uid 1000 so the npx child can read them).
+    # The user token is placed once via `npx ... auth` and refreshed in place, so it is not managed here.
+    - name: Ensure gcal dir exists in openclaw volume
+      ansible.builtin.file:
+        path: /var/lib/docker/volumes/stacks_openclaw-data/_data/gcal
+        state: directory
+        owner: "1000"
+        group: "1000"
+        mode: "0700"
+      when:
+        - inventory_hostname == 'openclaw'
+        - openclaw_gcal_mcp_enabled | default(false)
+        - vault_gcal_oauth_credentials is defined
+
+    - name: Write gcal OAuth client credentials into openclaw volume
+      ansible.builtin.copy:
+        content: "{{ vault_gcal_oauth_credentials }}"
+        dest: /var/lib/docker/volumes/stacks_openclaw-data/_data/gcal/gcp-oauth.keys.json
+        owner: "1000"
+        group: "1000"
+        mode: "0600"
+      when:
+        - inventory_hostname == 'openclaw'
+        - openclaw_gcal_mcp_enabled | default(false)
+        - vault_gcal_oauth_credentials is defined
+
     # --- OpenClaw post-deploy config (openclaw host only) ---
     - name: Get Tailscale FQDN for openclaw config
       ansible.builtin.command: tailscale status --json
@@ -274,11 +301,13 @@
 
     - name: Set Tailscale FQDN fact
       ansible.builtin.set_fact:
-        tailscale_fqdn: "{{ (ts_status_full.stdout | from_json).Self.DNSName | regex_replace('\\.$', '') }}"
+        tailscale_fqdn: >-
+          {{ (ts_status_full.stdout | from_json).Self.DNSName | regex_replace('\\.$', '')
+             if (ts_status_full.rc | default(1)) == 0
+             else (inventory_hostname ~ '.' ~ ansible_host) }}
       when:
         - tailscale_enabled | default(false)
         - tailscale_serve_port is defined
-        - ts_status_full.rc | default(1) == 0
 
     - name: Write openclaw.json config to volume
       ansible.builtin.template:
@@ -290,7 +319,7 @@
       when:
         - tailscale_enabled | default(false)
         - tailscale_serve_port is defined
-      notify: Restart openclaw
+      notify: Recreate openclaw
 
     - name: Fix openclaw state dir permissions
       ansible.builtin.file:
@@ -472,8 +501,11 @@
       ansible.builtin.command: docker restart jellyfin
       changed_when: true
 
-    - name: Restart openclaw
-      ansible.builtin.command: docker restart openclaw
+    - name: Recreate openclaw
+      # Force-recreate (not `docker restart`) so changed env/vault values actually land in the container.
+      ansible.builtin.command:
+        cmd: docker compose up -d --force-recreate --no-deps openclaw
+        chdir: "{{ stacks_dest }}"
       changed_when: true
 
     - name: Restart price-monitor

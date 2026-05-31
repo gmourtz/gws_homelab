@@ -4,7 +4,8 @@
 
 # UFW extra rules
 ufw_extra_rules:
-  - { port: "11434", proto: tcp, src: "192.168.10.0/24" }   # Ollama API (whole trusted VLAN)
+  - { port: "11434", proto: tcp, src: "192.168.10.0/24" }   # Ollama API (trusted VLAN)
+  - { port: "11434", proto: tcp, src: "192.168.40.30"   }   # Ollama API (openclaw on VLAN 40)
   - { port: "8080",  proto: tcp, src: "192.168.10.20"   }   # Open WebUI (Caddy on optiplex only)
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }   # Beszel agent (VLAN-wide, matches rpi3/openclaw pattern)
   - { port: "7007",  proto: tcp, src: "192.168.10.20"   }   # Dozzle agent
@@ -14,6 +15,7 @@ ufw_extra_rules:
 ollama_models:
   - gemma4:e4b
   - qwen3:8b
+  - qwen3:1.7b
 
 # Tailscale enabled — same pattern as optiplex/rpi3 for remote access
 tailscale_enabled: true
