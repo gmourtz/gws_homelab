@@ -280,25 +280,29 @@
 
     - name: Connect Tailscale
       ansible.builtin.command: >-
-        nice -n 19 tailscale up --authkey={{ vault_tailscale_authkey }} --accept-dns=false
-        --advertise-tags=tag:gws-homelab
+        nice -n 19 tailscale up --authkey={{ tailscale_authkey | default(vault_tailscale_authkey) }} --accept-dns=false
+        --accept-routes=false
+        --advertise-tags={{ tailscale_tags | default('tag:gws-homelab') }}
+        {% if tailscale_ssh | default(false) %}--ssh{% endif %}
         {% if tailscale_advertise_routes is defined %}
         --advertise-routes={{ tailscale_advertise_routes | join(',') }}
         {% endif %}
       when:
         - tailscale_enabled | default(true)
-        - vault_tailscale_authkey is defined
+        - (tailscale_authkey | default(vault_tailscale_authkey) | default('')) | length > 0
         - (ts_status.stdout | from_json).BackendState | default('') != 'Running'
       no_log: true
       tags: [tailscale-connect]
 
-    - name: Update Tailscale advertised routes
+    - name: Update Tailscale advertised routes and enforce accept-routes=false
       ansible.builtin.command: >-
         tailscale set
+        --accept-routes=false
+        {% if tailscale_advertise_routes is defined %}
         --advertise-routes={{ tailscale_advertise_routes | join(',') }}
+        {% endif %}
       when:
         - tailscale_enabled | default(true)
-        - tailscale_advertise_routes is defined
         - (ts_status.stdout | from_json).BackendState | default('') == 'Running'
       tags: [tailscale-connect]
 

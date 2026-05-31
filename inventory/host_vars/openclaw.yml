@@ -1,12 +1,15 @@
 ---
 # Host vars for openclaw (VLAN 40 — Agent, isolated from trusted network)
 
-# UFW extra rules — allow management from trusted VLAN only
 ufw_extra_rules:
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }   # Beszel agent
   - { port: "18789", proto: tcp, src: "192.168.10.0/24" }   # OpenClaw gateway
   - { port: "7007",  proto: tcp, src: "192.168.10.20" }     # Dozzle agent
 
-# Tailscale disabled — openclaw is VLAN-isolated (VLAN 40); Tailscale would bypass
-# MikroTik firewall rules via mesh. Agent communicates outbound via Telegram only.
-tailscale_enabled: false
+# Tailscale — tag:gws-homelab-openclaw is destination-only in the ACL (no outbound grants).
+# Dashboard: https://openclaw.<tailnet>.ts.net  (token = vault_openclaw_gateway_token)
+tailscale_enabled: true
+tailscale_tags: "tag:gws-homelab-openclaw"
+tailscale_authkey: "{{ vault_tailscale_authkey_openclaw }}"
+tailscale_serve_port: 18789
+tailscale_ssh: true

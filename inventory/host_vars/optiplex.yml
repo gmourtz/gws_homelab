@@ -56,6 +56,8 @@ ufw_extra_rules:
   - { port: "443", proto: tcp, src: "192.168.10.0/24" }
   - { port: "443", proto: tcp, src: "100.64.0.0/10" }  # Tailscale clients
 
-# Tailscale — advertise LAN subnet so remote clients can reach 192.168.10.0/24
+# Tailscale — advertise all homelab subnets so remote clients can reach every VLAN
 tailscale_advertise_routes:
-  - 192.168.10.0/24
+  - 192.168.10.0/24   # Trusted (VLAN 10)
+  - 192.168.40.0/24   # Agent / openclaw (VLAN 40)
+  - 192.168.50.0/24   # Lab / kali (VLAN 50)

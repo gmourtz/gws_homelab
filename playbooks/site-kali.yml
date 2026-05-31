@@ -189,6 +189,67 @@
         group: root
         mode: "0755"
 
+    # --- Tailscale (optional remote admin — SSH only, tag-isolated) ---
+    # OFF by default (tailscale_enabled: false in host_vars/kali.yml). When
+    # enabled, kali joins the tailnet for admin SSH only. Its tag
+    # (tag:gws-homelab-kali) has NO outbound grants in the ACL, so kali cannot
+    # reach any other node; --accept-routes/--accept-dns stay off so it can't
+    # ride optiplex's subnet route or use tailnet DNS. See host_vars/kali.yml
+    # for the go-live checklist.
+    #
+    # Kali is Debian-based — site.yml's Ubuntu-'noble' apt repo won't resolve
+    # here, so we use Tailscale's official install script (auto-detects Kali).
+    - name: Check whether Tailscale is installed
+      ansible.builtin.stat:
+        path: /usr/bin/tailscale
+      register: ts_bin
+      when: tailscale_enabled | default(false)
+
+    - name: Install Tailscale (official script — Kali/Debian)
+      ansible.builtin.shell: curl -fsSL https://tailscale.com/install.sh | sh
+      args:
+        executable: /bin/bash
+      when:
+        - tailscale_enabled | default(false)
+        - not (ts_bin.stat.exists | default(false))
+      changed_when: true
+
+    - name: Enable tailscaled
+      ansible.builtin.systemd:
+        name: tailscaled
+        state: started
+        enabled: true
+      when: tailscale_enabled | default(false)
+
+    - name: Check Tailscale status
+      ansible.builtin.command: tailscale status --json
+      register: ts_status_kali
+      changed_when: false
+      failed_when: false
+      when: tailscale_enabled | default(false)
+
+    - name: Connect Tailscale (tag-isolated, SSH on, no outbound/routes/DNS)
+      ansible.builtin.command: >-
+        tailscale up
+        --authkey={{ tailscale_authkey | default(vault_tailscale_authkey) }}
+        --advertise-tags={{ tailscale_tags | default('tag:gws-homelab') }}
+        --accept-routes=false
+        --accept-dns=false
+        --ssh
+      when:
+        - tailscale_enabled | default(false)
+        - (tailscale_authkey | default(vault_tailscale_authkey) | default('')) | length > 0
+        - (ts_status_kali.stdout | from_json).BackendState | default('') != 'Running'
+      no_log: true
+      tags: [tailscale-connect]
+
+    - name: Disconnect Tailscale (tailscale_enabled=false)
+      ansible.builtin.command: tailscale logout
+      when:
+        - not (tailscale_enabled | default(false))
+      failed_when: false
+      changed_when: false
+
   handlers:
     - name: Restart SSH
       ansible.builtin.systemd:

@@ -268,12 +268,17 @@
       ansible.builtin.command: tailscale status --json
       register: ts_status_full
       changed_when: false
-      when: tailscale_serve_port is defined
+      when:
+        - tailscale_enabled | default(false)
+        - tailscale_serve_port is defined
 
     - name: Set Tailscale FQDN fact
       ansible.builtin.set_fact:
         tailscale_fqdn: "{{ (ts_status_full.stdout | from_json).Self.DNSName | regex_replace('\\.$', '') }}"
-      when: tailscale_serve_port is defined
+      when:
+        - tailscale_enabled | default(false)
+        - tailscale_serve_port is defined
+        - ts_status_full.rc | default(1) == 0
 
     - name: Write openclaw.json config to volume
       ansible.builtin.template:
@@ -282,7 +287,9 @@
         owner: "1000"
         group: "1000"
         mode: "0600"
-      when: tailscale_serve_port is defined
+      when:
+        - tailscale_enabled | default(false)
+        - tailscale_serve_port is defined
       notify: Restart openclaw
 
     - name: Fix openclaw state dir permissions
@@ -291,7 +298,9 @@
         mode: "0700"
         owner: "1000"
         group: "1000"
-      when: tailscale_serve_port is defined
+      when:
+        - tailscale_enabled | default(false)
+        - tailscale_serve_port is defined
 
     # --- Ollama model pull (localllm only) ---
     # Ensures all models listed in ollama_models are downloaded.
