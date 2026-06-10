@@ -174,6 +174,42 @@ services:
       timeout: 5s
       retries: 3
 
+  # NetAlertX — homelab device scanner; alerts on new/unknown devices.
+  # network_mode: host is REQUIRED (arp-scan needs L2 access). The web UI (20211)
+  # therefore binds on the host; Caddy reverse-proxies it via optiplex.internal
+  # (proxy_services). The ufw_extra_rules entry for 10.10.0.0/16 -> 20211 lets Caddy
+  # (docker bridge) reach it — same hop as beszel-agent.
+  #
+  # Scan config lives in the NetAlertX UI (it has no env hook for settings):
+  #   SCAN_SUBNETS    = 192.168.10.0/24 --interface=enp2s0     (arp-scan local VLAN, full MACs)
+  #   SNMPDSC_routers = snmpwalk -v 2c -c <vault_routeros_snmp_community> 192.168.10.1 1.3.6.1.2.1.4.22.1.2
+  #                     -> reads the MikroTik ARP table = ALL VLANs with MACs.
+  #   (SNMP is enabled read-only on the router in playbooks/configure-routeros.yml,
+  #    community restricted to optiplex; enable the SNMPDSC plugin in the UI.)
+  netalertx:
+    image: ghcr.io/jokob-sk/netalertx:latest
+    container_name: netalertx
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN   # arp-scan / nmap raw-socket scanning
+      - NET_RAW
+    volumes:
+      - netalertx-data:/data   # config + sqlite db
+    environment:
+      TZ: "{{ timezone }}"
+      PORT: "20211"
+      GRAPHQL_PORT: "20212"
+      PUID: "1000"
+      PGID: "1000"
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:20211/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s   # first-run DB init is slow
+
   # --- YouTube Premium ---
   youtube-video-downloader:
     image: ghcr.io/gmourtz/youtube_premium:latest
@@ -1082,6 +1118,7 @@ networks:
 volumes:
   caddy-data:
   beszel-data:
+  netalertx-data:
   jellyfin-config:
   jellyfin-cache:
 {% if vault_tailscale_jellyfin_authkey is defined %}

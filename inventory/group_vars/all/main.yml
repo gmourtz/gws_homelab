@@ -36,7 +36,7 @@ local_domain: internal
 # - name: the primary hostname (typically the inventory hostname)
 # - aliases: optional service names that resolve to the same IP
 dns_records:
-  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, musicseerr, paperless, paperless-gpt, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr, chat, air-quality, air-quality-collector, miniflux] }
+  - { name: optiplex, ip: "192.168.10.20", tag: hosts, aliases: [beszel, jellyfin, audiobookshelf, stirling-pdf, it-tools, drawio, homepage, dozzle, jellyseerr, musicseerr, paperless, paperless-gpt, immich, uptime-kuma, actual-budget, navidrome, qbittorrent, prowlarr, radarr, sonarr, lidarr, bazarr, chat, air-quality, air-quality-collector, miniflux, netalertx] }
   - { name: rpi3,     ip: "192.168.10.10", tag: hosts, aliases: [pihole] }
   - { name: kali,     ip: "192.168.50.11", tag: hosts, aliases: [juice-shop, webgoat] }
   - { name: openclaw, ip: "192.168.40.30", tag: hosts }
@@ -68,6 +68,7 @@ proxy_services:
   - { name: chat,         upstream: "localllm.internal:8080", tag: ai }   # Open WebUI on localllm
   - { name: paperless-gpt, upstream: "paperless-gpt:8080",  tag: ai }
   - { name: air-quality-collector, upstream: "air-quality-collector:8502", tag: monitoring }
+  - { name: netalertx,    upstream: "optiplex.internal:20211", tag: monitoring }   # host-networked; proxied via host LAN IP
   - { name: miniflux,     upstream: "miniflux:8080",         tag: tools }
 
 # qBittorrent download categories — written to /config/qBittorrent/categories.json on first run only.

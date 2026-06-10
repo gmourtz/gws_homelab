@@ -19,6 +19,19 @@ routeros_dns_servers:
 routeros_dns_allow_remote_requests: false
 
 # ---------------------------------------------------------------------------
+# SNMP — read-only agent so NetAlertX (on optiplex) can read the router's ARP
+# table and inventory devices across ALL VLANs in one query. The router is the
+# gateway for every VLAN, so it holds each VLAN's IP<->MAC mappings (including
+# Guest, which no host can reach directly).
+# Community string is secret -> vault_routeros_snmp_community.
+# Restricted to optiplex's IP; the input firewall already allows VLAN 10 ->
+# router on any port (incl. UDP 161), so no firewall change is required.
+# ---------------------------------------------------------------------------
+routeros_snmp_contact: "gws homelab"
+routeros_snmp_location: "homelab"
+routeros_snmp_allowed_address: 192.168.10.20/32   # optiplex (NetAlertX) only
+
+# ---------------------------------------------------------------------------
 # VLANs
 # ---------------------------------------------------------------------------
 vlans:
