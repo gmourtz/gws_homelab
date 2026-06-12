@@ -35,6 +35,7 @@ data_dirs:
   - torrents/movies
   - torrents/tv
   - torrents/music
+  - torrents/soulseek        # slskd (Soulseek) downloads → Lidarr imports into music/lidarr
   - movies                   # Radarr library (hardlinks from torrents/movies)
   - tv                       # Sonarr library (hardlinks from torrents/tv)
   - music/lidarr             # Lidarr music (separate from YouTube music playlist)

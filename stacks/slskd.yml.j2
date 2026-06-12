@@ -1,0 +1,35 @@
+# Managed by Ansible — stacks/slskd.yml.j2, written into the slskd-config volume
+# (/app/slskd.yml) by playbooks/deploy-stacks.yml. This file is the source of
+# truth: UI/manual edits are overwritten on the next `make stacks`. Secrets come
+# from the Ansible Vault. slskd's transfer history/DB lives separately in /app, so
+# rewriting this config does not lose download state.
+
+soulseek:
+  username: "{{ vault_soulseek_username }}"
+  password: "{{ vault_soulseek_password }}"
+  # Incoming peer port. Mullvad has no port-forwarding, so this won't receive
+  # inbound connections — downloads still work, slskd just shares less.
+  listen_port: 50300
+
+directories:
+  # Completed downloads. Lidarr sees the identical host path via /mnt/media:/data,
+  # so Soularr can hand Lidarr /data/torrents/soulseek/... for import.
+  downloads: /data/torrents/soulseek
+  # In-progress files kept in the config volume (off the media pool).
+  incomplete: /app/incomplete
+
+# Download-only: nothing shared back. Add paths here later to seed/share.
+shares:
+  directories: []
+
+web:
+  port: 5030
+  # Behind Caddy on the trusted VLAN, but keep auth on so the API requires a key.
+  authentication:
+    username: slskd
+    password: "{{ vault_slskd_web_password | default(vault_slskd_api_key) }}"
+    api_keys:
+      soularr:
+        key: "{{ vault_slskd_api_key }}"
+        role: readwrite              # Soularr must search + enqueue downloads
+        cidr: 0.0.0.0/0,::/0         # reached from arr-net via the gluetun netns

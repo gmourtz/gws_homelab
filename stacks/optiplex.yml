@@ -252,7 +252,11 @@ services:
       TOKEN_FILE: token.json
       POLL_INTERVAL: "60"
       AUDIO_ONLY: "true"
-      AUDIO_FORMAT: flac
+      # 'best' keeps YouTube's native codec (Opus ~160 kbps) with NO re-encode.
+      # YouTube audio is always lossy, so transcoding to FLAC only bloated file
+      # size (~3-5x) with zero quality gain. Real lossless comes from the
+      # Lidarr/Soulseek path; this path is now an honest lossy fallback.
+      AUDIO_FORMAT: best
       STATE_FILE_NAME: .downloaded_music.log
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
@@ -354,7 +358,7 @@ services:
       WIREGUARD_ADDRESSES: "{{ vault_mullvad_wg_addresses }}"
       SERVER_COUNTRIES: Netherlands
       TZ: "{{ timezone }}"
-      FIREWALL_INPUT_PORTS: "8080,9696,7878,8989,8686,6767,6881"
+      FIREWALL_INPUT_PORTS: "8080,9696,7878,8989,8686,6767,6881,5030"  # +5030 = slskd web UI/API
       FIREWALL_OUTBOUND_SUBNETS: "10.10.0.0/16,172.16.0.0/12"
       HEALTH_VPN_DURATION_INITIAL: "120s"
       WIREGUARD_MTU: "1380"
@@ -514,6 +518,58 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  # --- Soulseek (slskd) + Soularr ---
+  # Widens music coverage (obscure / rare / out-of-print) and is a strong source
+  # of real, CD-sourced lossless FLAC. slskd runs behind the gluetun VPN like the
+  # rest of the *arr stack; Soularr is a headless loop that hunts Lidarr's missing
+  # albums on Soulseek (FLAC-first, see soularr.config.ini.j2) and feeds completed
+  # downloads back to Lidarr for import. The whole block is gated on
+  # vault_slskd_api_key so it stays inert until the Soulseek/slskd/Lidarr secrets
+  # are added to the vault (a routine `make stacks` deploys nothing until then).
+{% if vault_slskd_api_key is defined %}
+  slskd:
+    image: slskd/slskd:latest
+    container_name: slskd
+    restart: unless-stopped
+    network_mode: "service:gluetun"   # all Soulseek traffic egresses via Mullvad
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      PUID: "1000"                    # gosu-drop to gws so downloads are 1000:1000 (like Lidarr)
+      PGID: "1000"
+      TZ: "{{ timezone }}"
+    volumes:
+      - slskd-config:/app             # config (slskd.yml) + SQLite DB + logs
+      - /mnt/media:/data              # completed downloads → /data/torrents/soulseek
+    mem_limit: 512m
+    # Image (dotnet runtime-deps:noble) ships wget — hit slskd's own /health.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:5030/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  soularr:
+    image: mrusse08/soularr:latest
+    container_name: soularr
+    restart: unless-stopped
+    networks:
+      - arr-net                       # reaches gluetun:8686 (Lidarr) + gluetun:5030 (slskd)
+    environment:
+      TZ: "{{ timezone }}"
+      SCRIPT_INTERVAL: "300"          # re-scan Lidarr's wanted list every 5 min
+    volumes:
+      - soularr-config:/data          # config.ini (templated by deploy-stacks.yml)
+      - /mnt/media/torrents/soulseek:/downloads   # reads slskd's completed downloads
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "test -e /proc/1/cmdline || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+{% endif %}
 
   # --- Personal website ---
   georgios-website:
@@ -1147,6 +1203,10 @@ volumes:
   sonarr-config:
   lidarr-config:
   bazarr-config:
+{% if vault_slskd_api_key is defined %}
+  slskd-config:
+  soularr-config:
+{% endif %}
   musicseerr-config:
   musicseerr-cache:
   paperless-gpt-prompts:

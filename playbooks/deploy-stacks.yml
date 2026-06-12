@@ -151,6 +151,34 @@
         - inventory_hostname == 'optiplex'
         - qbittorrent_categories is defined
 
+    # --- Soulseek (slskd) + Soularr config (optiplex only) ---
+    # Written into the service volumes after compose up. slskd auto-generates a
+    # default slskd.yml on first start; we overwrite it with the vault-backed
+    # config (force: true = source of truth) and restart so it takes effect.
+    # Soularr re-reads config.ini each run. Both gated on vault_slskd_api_key,
+    # the same key that gates the services in stacks/optiplex.yml.
+    - name: Write slskd config to volume
+      ansible.builtin.template:
+        src: "{{ stacks_src }}/slskd.yml.j2"
+        dest: /var/lib/docker/volumes/stacks_slskd-config/_data/slskd.yml
+        owner: "1000"        # slskd drops to PUID 1000 (gosu)
+        group: "1000"
+        mode: "0640"
+      when:
+        - inventory_hostname == 'optiplex'
+        - vault_slskd_api_key is defined
+      notify: Restart slskd
+
+    - name: Write Soularr config.ini to volume
+      ansible.builtin.template:
+        src: "{{ stacks_src }}/soularr.config.ini.j2"
+        dest: /var/lib/docker/volumes/stacks_soularr-config/_data/config.ini
+        mode: "0644"         # readable whatever uid the soularr image runs as
+      when:
+        - inventory_hostname == 'optiplex'
+        - vault_slskd_api_key is defined
+      notify: Restart soularr
+
     # --- Jellyseerr volume ownership (optiplex only) ---
     - name: Fix Jellyseerr config volume ownership
       ansible.builtin.file:
@@ -510,6 +538,14 @@
 
     - name: Restart price-monitor
       ansible.builtin.command: docker restart price-monitor
+      changed_when: true
+
+    - name: Restart slskd
+      ansible.builtin.command: docker restart slskd
+      changed_when: true
+
+    - name: Restart soularr
+      ansible.builtin.command: docker restart soularr
       changed_when: true
 
 

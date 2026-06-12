@@ -286,6 +286,15 @@
         server: optiplex
         container: lidarr
 
+{% if vault_slskd_api_key is defined %}
+    - slskd:
+        href: https://slskd.{{ local_domain }}/
+        icon: slskd.png
+        description: Soulseek (wider music coverage)
+        server: optiplex
+        container: slskd
+
+{% endif %}
     - Bazarr:
         href: https://bazarr.{{ local_domain }}/
         icon: bazarr.png
