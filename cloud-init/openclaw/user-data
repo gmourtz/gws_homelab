@@ -24,8 +24,10 @@ autoinstall:
   identity:
     hostname: openclaw
     username: gws
-    # Locked password — SSH key only (password auth is disabled via late-commands)
-    password: "$6$homelablocked$YZIe7O7AGvMm8yZ7ddnWARifGT/koTS3r4r1ylqTxl2oR9e8tvgAmw6s1lu2/LpRSm2.kXNlA5F/kenXKlN/l."
+    # Required by autoinstall (must be a valid crypt hash). Random throwaway,
+    # reused nowhere — login is SSH-key-only (allow-pw: false) and sudo is
+    # NOPASSWD, so this password is never used for anything.
+    password: "$6$AVriIjjm6tA0StsB$SQUDmm6qxqVPsjSDzxecMz3kK1C26JdzEziTwbEfoLdwqD56rdC9Pk6SWuHnnQ4LNiKCSgN05i2nUQD398mfO/"
 
   ssh:
     install-server: true
