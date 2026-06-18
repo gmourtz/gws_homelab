@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>George Mourtzinos | Data & AI Consultant</title>
+  <title>George Mourtzinos</title>
+  <meta name="description" content="George Mourtzinos. Data and AI engineer, currently at Rightmove. Based in London." />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
@@ -15,7 +16,7 @@
       --text-bright: #f0f6fc;
       --text-secondary: #8b949e;
       --border: #30363d;
-      --max-width: 780px;
+      --max-width: 700px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -24,25 +25,28 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.7;
+      line-height: 1.75;
       -webkit-font-smoothing: antialiased;
     }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
 
     header {
       max-width: var(--max-width);
       margin: 0 auto;
-      padding: 4rem 1.5rem 2rem;
+      padding: 4rem 1.5rem 1rem;
     }
 
     .header-row {
       display: flex;
       align-items: center;
-      gap: 1.5rem;
+      gap: 1.25rem;
     }
 
     .profile-photo {
-      width: 80px;
-      height: 80px;
+      width: 76px;
+      height: 76px;
       border-radius: 50%;
       object-fit: cover;
       flex-shrink: 0;
@@ -50,236 +54,198 @@
     }
 
     .header-info h1 {
-      font-size: 1.5rem;
+      font-size: 1.45rem;
       font-weight: 700;
       letter-spacing: -0.02em;
-      line-height: 1.3;
+      line-height: 1.2;
       color: var(--text-bright);
     }
 
     .header-info p {
       color: var(--text-secondary);
-      font-size: 0.95rem;
-      margin-top: 0.25rem;
+      font-size: 0.92rem;
+      margin-top: 0.2rem;
     }
 
     .header-links {
       display: flex;
-      gap: 1rem;
+      gap: 1.1rem;
       margin-top: 1.5rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid var(--border);
+      font-size: 1.3rem;
     }
 
-    .header-links a {
-      color: var(--text-secondary);
-      font-size: 1.25rem;
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-
-    .header-links a:hover { color: var(--text-bright); }
+    .header-links a { color: var(--text-secondary); }
+    .header-links a:hover { color: var(--text-bright); text-decoration: none; }
 
     main {
       max-width: var(--max-width);
       margin: 0 auto;
-      padding: 0 1.5rem 4rem;
+      padding: 1rem 1.5rem 4rem;
     }
 
     section {
-      padding: 2rem 0;
+      padding: 1.75rem 0;
       border-top: 1px solid var(--border);
     }
 
-    section:first-child { border-top: none; }
+    section:first-of-type { border-top: none; }
 
     h2 {
       font-size: 0.8rem;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.07em;
       color: var(--text-secondary);
       margin-bottom: 1rem;
     }
 
     section p {
-      font-size: 0.95rem;
+      font-size: 0.96rem;
       color: var(--text);
-      line-height: 1.8;
     }
 
-    section p + p {
-      margin-top: 0.75rem;
+    section p + p { margin-top: 0.85rem; }
+
+    .intro p { font-size: 1.02rem; }
+    .intro strong { color: var(--text-bright); font-weight: 600; }
+
+    .work { list-style: none; }
+
+    .work li {
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .work li:last-child { border-bottom: none; }
+
+    .work .what {
+      font-weight: 600;
+      color: var(--text-bright);
+      font-size: 0.98rem;
     }
 
-    #skills ul {
-      list-style: none;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+    .work .where {
+      color: var(--text-secondary);
+      font-weight: 400;
+      font-size: 0.88rem;
     }
 
-    #skills li {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 0.35rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.85rem;
+    .work .desc {
+      margin-top: 0.3rem;
+      font-size: 0.93rem;
       color: var(--text);
-      font-weight: 500;
     }
 
-    #certifications ul {
+    #skills p { color: var(--text); font-size: 0.95rem; }
+    #skills .muted { color: var(--text-secondary); }
+
+    .certs {
       list-style: none;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 0.75rem;
-    }
-
-    #certifications li {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.6rem 0.75rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
       font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--text);
+      color: var(--text-secondary);
     }
+    .certs li { padding: 0.15rem 0; }
 
-    .cert-logo {
-      width: 36px;
-      height: 36px;
-      object-fit: contain;
-      flex-shrink: 0;
-    }
-
-    #contact p {
-      font-size: 0.95rem;
-      margin-bottom: 0.4rem;
-    }
-
-    #contact a {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    #contact a:hover { text-decoration: underline; }
+    #contact a { font-weight: 500; }
 
     footer {
       max-width: var(--max-width);
       margin: 0 auto;
-      padding: 2rem 1.5rem;
+      padding: 1.75rem 1.5rem 3rem;
       border-top: 1px solid var(--border);
-      text-align: center;
       color: var(--text-secondary);
-      font-size: 0.8rem;
+      font-size: 0.82rem;
     }
 
     @media (max-width: 600px) {
       header { padding-top: 2.5rem; }
+      .profile-photo { width: 62px; height: 62px; }
       .header-info h1 { font-size: 1.25rem; }
-      .profile-photo { width: 64px; height: 64px; }
-    }
-
-    @media (min-width: 601px) {
-      #certifications ul { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
 <body>
   <header>
     <div class="header-row">
-      <img src="media/Photo profile.png" alt="George Mourtzinos Profile Photo" class="profile-photo">
+      <img src="media/Photo profile.png" alt="George Mourtzinos" class="profile-photo">
       <div class="header-info">
         <h1>George Mourtzinos</h1>
-        <p>Data & AI Consultant | Cloud-Native Architect | Business Value-Driven Builder</p>
+        <p>Data and AI engineer, currently at Rightmove. Based in London.</p>
       </div>
     </div>
     <div class="header-links">
+      <a href="https://github.com/gmourtz" target="_blank" rel="noopener" aria-label="GitHub"><i class="fab fa-github"></i></a>
+      <a href="https://www.linkedin.com/in/georgemourtzinos" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
       <a href="mailto:gmourtzinos@icloud.com" aria-label="Email"><i class="fas fa-envelope"></i></a>
-      <a href="https://www.linkedin.com/in/georgemourtzinos" target="_blank" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
-      <a href="https://github.com/gmourtz" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
     </div>
   </header>
 
   <main>
-    <section id="about">
-      <h2>About</h2>
-      <p>Hi, I'm George. I'm a Data & AI Engineer who loves building the infrastructure that turns raw data into something people can actually use.</p>
-      <p>Most of my work revolves around designing data pipelines on platforms like AWS, Snowflake, and Azure, making sure data scientists and analysts have what they need to move fast and make good decisions.</p>
-      <p>I enjoy solving hard problems, thinking strategically about systems, and helping the people around me grow. Some of my favourite projects have been the ones where we found a simpler way to do something that saved real time and money.</p>
-      <p>Outside of work, I'm always tinkering. Whether it's a new framework, a side project, or just keeping up with how the data world is evolving, I like staying curious.</p>
+    <section class="intro">
+      <p>Hi, I'm George. I build the data and AI plumbing that other people get to rely on. Pipelines, platforms, and lately the AI agents that sit on top of them.</p>
+      <p>The work I'm proudest of is rarely the flashy part. It's the moment a slow, expensive process turns into something simple that just runs. I've had a good few of those now. A platform that works through more than a billion LinkedIn profiles. A 70TB database move where losing one row wasn't acceptable. Real-time monitoring across a 114 MWp fleet of solar farms.</p>
+      <p>At Rightmove I'm putting AI agents into the data platform so analysts can answer their own questions instead of waiting on an engineer. A few years back I left a graduate scheme at Siemens to go build things at a startup, and I've been chasing that feeling since.</p>
     </section>
 
-    <!-- <section id="projects">
-      <h2>Projects</h2>
-      <ul>
-        <li><strong>Private Equity</strong> – Designed and deployed ELT pipelines to process over 1 billion LinkedIn profiles. Delivered portfolio company analytics and internal talent search capabilities.</li>
-        <li><strong>Insurance</strong> – Built a real-time transformation framework in Snowflake/dbt. Delivered 30% faster development cycles and £500k+ in value through MDM optimisations.</li>
-        <li><strong>Financial Services</strong> – Led a team of engineers to implement cost-efficient data pipelines, reducing query time by 23% and improving stakeholder reporting workflows.</li>
-        <li><strong>Renewable Energy</strong> – Managed 114 MWp solar assets and developed analytics that boosted revenue by 12%.</li>
-        <li><strong>Energy Infrastructure</strong> – Modeled power systems for critical energy infrastructure projects, improving system performance by 6%.</li>
+    <section id="work">
+      <h2>Some things I've built</h2>
+      <ul class="work">
+
+        <li>
+          <div class="what">A home network you can rebuild from scratch <span class="where">/ open source</span></div>
+          <div class="desc">The repo behind this very page, and the rest of my house. Two dozen self-hosted services, from media and photos to a local LLM and an autonomous AI agent, running on a handful of second-hand mini-PCs and Raspberry Pis, all defined in Ansible and rebuildable from a wiped disk with one reflash. GitHub Actions builds the images, a MikroTik segments everything into firewalled VLANs, and Tailscale ties it together. I open-sourced it so anyone can lift the patterns: <a href="https://github.com/gmourtz/gws_homelab" target="_blank" rel="noopener">github.com/gmourtz/gws_homelab</a></div>
+        </li>
+
+        <li>
+          <div class="what">Self-serve AI agents for analysts <span class="where">/ Rightmove, ongoing</span></div>
+          <div class="desc">Putting AI agents into the data platform so people can get answers themselves instead of queuing for an engineer. It's part of bringing 25 years of analytical data up to date.</div>
+        </li>
+
+        <li>
+          <div class="what">A migration that couldn't lose a row <span class="where">/ Rightmove</span></div>
+          <div class="desc">I built the checks that proved a 70TB move from Oracle to BigQuery was actually complete, across 25 years of history. I also got the cost of safeguarding all that data down by about a third.</div>
+        </li>
+
+        <li>
+          <div class="what">Talent search across a billion profiles <span class="where">/ Hg</span></div>
+          <div class="desc">I designed the pipelines behind a people-intelligence platform that works through more than a billion LinkedIn profiles, so investment teams can search for talent and find gaps across their portfolio. I handled the personal data carefully and shipped it on AWS with Terraform.</div>
+        </li>
+
+        <li>
+          <div class="what">A faster way to model new data <span class="where">/ Arch Capital</span></div>
+          <div class="desc">A metadata-driven setup on Snowflake, using Streams, Tasks and Dynamic Tables, that cut the time to model new data by about 30%.</div>
+        </li>
+
+        <li>
+          <div class="what">Watching a fleet of solar farms in real time <span class="where">/ Geodomi</span></div>
+          <div class="desc">End-to-end monitoring for 114 MWp of solar assets, from ingestion through to the dashboards people actually used. The insights helped grow revenue by 12%. This is the startup I left the graduate scheme for.</div>
+        </li>
+
       </ul>
-    </section> -->
+    </section>
 
     <section id="skills">
-      <h2>Skills</h2>
-      <ul>
-        <li>SQL</li>
-        <li>Python</li>
-        <li>Cypher</li>
-        <li>Snowflake</li>
-        <li>AWS</li>
-        <li>dbt</li>
-        <li>Databricks</li>
-        <li>Meltano</li>
-        <li>Matillion</li>
-        <li>Terraform</li>
-        <li>PowerBI</li>
-        <li>Git</li>
-        <li>Docker</li>
-        <li>Airflow</li>
-        <li>ELT / ETL</li>
-        <li>Platform Design</li>
-        <li>CI/CD</li>
-        <li>IaC</li>
-        <li>Data Quality</li>
-        <li>Data Governance</li>
-        <li>Mentorship</li>
-        <li>Stakeholder Management</li>
-        <li>Agile</li>
-        <li>Project Delivery</li>
-      </ul>
+      <h2>Tools I reach for</h2>
+      <p>Mostly <strong style="color:var(--text-bright);font-weight:500">Python and SQL</strong>, on Snowflake, BigQuery, AWS and GCP. <span class="muted">Day to day that means dbt, Airflow, Spark, Terraform, Docker, Databricks and Meltano, plus a bit of Cypher when the data is a graph.</span></p>
     </section>
 
-    <section id="certifications">
+    <section id="certs-section">
       <h2>Certifications</h2>
-      <ul>
-        <li><img class="cert-logo" src="media/Snowflake SnowPro® Advanced Data Engineer.png" alt="Snowflake SnowPro Advanced Data Engineer Badge" />Snowflake SnowPro® Advanced: Data Engineer</li>
-        <li><img class="cert-logo" src="media/Snowflake SnowPro® Core.png" alt="Snowflake SnowPro Core Badge" />Snowflake SnowPro® Core</li>
-        <li><img class="cert-logo" src="media/ Databricks Data Engineer Associate.png" alt="Databricks Data Engineer Associate Badge" />Databricks Data Engineer Associate</li>
-        <li><img class="cert-logo" src="media/ AWS Cloud Practitioner.png" alt="AWS Cloud Practitioner Badge" />AWS Cloud Practitioner</li>
-        <li><img class="cert-logo" src="media/Databricks Lakehouse Fundamentals.png" alt="Databricks Lakehouse Fundamentals Badge" />Databricks Lakehouse Fundamentals</li>
-        <li><img class="cert-logo" src="media/Professional Scrum Master I.png" alt="Professional Scrum Master I Badge" />Professional Scrum Master I</li>
-        <li><img class="cert-logo" src="media/dbt fundamentals.png" alt="dbt Fundamentals Badge" />dbt Fundamentals</li>
-        <li><img class="cert-logo" src="media/DataOps.live Fundamentals.webp" alt="DataOps.live Fundamentals Badge" />DataOps.live Fundamentals</li>
-        <li><img class="cert-logo" src="media/APM Project Fundamentals Qualification (PFQ).webp" alt="APM Project Fundamentals Qualification (PFQ) Badge" />APM Project Fundamentals Qualification (PFQ)</li>
+      <ul class="certs">
+        <li>SnowPro Advanced: Data Engineer, and SnowPro Core</li>
+        <li>Databricks Data Engineer Associate, and AWS Cloud Practitioner</li>
+        <li>Professional Scrum Master I, dbt Fundamentals, APM PFQ</li>
       </ul>
     </section>
 
     <section id="contact">
-      <h2>Contact</h2>
-      <p>Email: <a href="mailto:gmourtzinos@icloud.com">gmourtzinos@icloud.com</a></p>
-      <p>LinkedIn: <a href="https://www.linkedin.com/in/georgemourtzinos/" target="_blank">linkedin.com/in/georgemourtzinos</a></p>
+      <h2>Say hello</h2>
+      <p>The best way to reach me is email: <a href="mailto:gmourtzinos@icloud.com">gmourtzinos@icloud.com</a>.</p>
+      <p style="margin-top:0.4rem;color:var(--text-secondary);font-size:0.9rem;">I'm also on <a href="https://www.linkedin.com/in/georgemourtzinos/" target="_blank" rel="noopener">LinkedIn</a> and <a href="https://github.com/gmourtz" target="_blank" rel="noopener">GitHub</a>.</p>
     </section>
   </main>
 
   <footer>
-    <p>&copy; 2026 George Mourtzinos</p>
+    George Mourtzinos. London, 2026.
   </footer>
   <script src="cal-init.js"></script>
 </body>
