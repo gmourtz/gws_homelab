@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          fetch-depth: 0          # full history so we can diff the whole push range
 
       - name: Detect changed apps
         id: changed
@@ -36,7 +36,15 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.app }}" ]]; then
             CHANGED=$(printf '%s\n' "${{ github.event.inputs.app }}" | jq -R -s -c 'split("\n") | map(select(. != ""))')
           elif [[ "${{ github.event_name }}" == "push" ]]; then
-            CHANGED=$(git diff --name-only HEAD~1 HEAD -- apps/ | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(. != ""))')
+            # Diff the entire push (before..after), not just the head commit, so an app
+            # change buried under later commits is still detected. `before` is all-zeros
+            # on a branch's first push and may be unreachable after a force-push; fall
+            # back to the head commit's parent (or the empty tree) in those cases.
+            BEFORE="${{ github.event.before }}"
+            if [[ "$BEFORE" =~ ^0+$ ]] || ! git rev-parse --verify --quiet "${BEFORE}^{commit}" >/dev/null 2>&1; then
+              BEFORE=$(git rev-parse --verify --quiet HEAD~1 || git hash-object -t tree /dev/null)
+            fi
+            CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}" -- apps/ | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(. != ""))')
           else
             CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- apps/ | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(. != ""))')
           fi
@@ -112,7 +120,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Log in to GHCR
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -133,7 +141,7 @@ jobs:
         with:
           context: apps/${{ matrix.app }}
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'push' }}
+          push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
