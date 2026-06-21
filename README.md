@@ -6,6 +6,8 @@ It runs the things I'd otherwise rent from a cloud provider: media and photo lib
 
 The goal was to run production-shaped systems end to end (networking, containers, CI/CD, security, and AI) on a small budget, with everything reproducible and documented in code rather than in my head.
 
+Lately a lot of that is AI. The homelab serves its own LLM on local hardware and runs agents on it, so the models, and the data they touch, never leave the house.
+
 ## What's running
 
 The full list renders on an internal dashboard (`https://homepage.internal`). Highlights:
@@ -15,6 +17,15 @@ The full list renders on an internal dashboard (`https://homepage.internal`). Hi
 - **AI:** Open WebUI (`chat.internal`), Ollama (`localllm.internal:11434`), OpenClaw autonomous agent
 - **Monitoring:** Beszel (per-host metrics), Dozzle (logs), Uptime Kuma (uptime + Telegram alerts), Pi-hole
 - **Infrastructure:** Caddy reverse proxy (internal CA, `*.internal` HTTPS), Cloudflare Tunnel, Sablier (scale-to-zero)
+
+## Local and private AI
+
+The piece I'm most into right now: the homelab runs its own AI on its own hardware, and the agents built on top keep everything in-house.
+
+- **Self-hosted inference.** A dedicated node (`localllm`: i7-13700T, 16 GB, CPU-only) runs [Ollama](https://ollama.com) behind an OpenAI-compatible API, with [Open WebUI](https://openwebui.com) for browser chat at `chat.internal`. Models live in a local volume and the API is firewalled to the trusted VLAN, so prompts and context never leave the network.
+- **Agents running on local AI.** My custom agents reach the local model through the standard OpenAI SDK, just pointed at a different `base_url`. The portfolio agent pulls my real brokerage positions, runs the analysis on a local `qwen3` model with structured outputs, and sends me the verdict over Telegram, with no financial data leaving the network and no per-token bill.
+- **Pluggable models.** Every agent speaks the OpenAI-compatible API, so swapping between the local model and a frontier cloud one is a single environment variable. The always-on autonomous agent (OpenClaw) runs on its own firewalled VLAN with a destination-only Tailscale tag, so it can be reached but can't reach back out.
+- **Why it matters.** Self-hosted means no rate limits, no recurring inference bill, and full control of the stack from the silicon up.
 
 ## How it works
 
