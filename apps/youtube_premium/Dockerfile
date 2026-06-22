@@ -8,7 +8,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir --upgrade yt-dlp && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    # Drop build-only tooling from the runtime image — not used at runtime (yt-dlp
+    # runs as a subprocess; google libs use importlib.metadata, not pkg_resources)
+    # and the source of HIGH CVEs flagged by Trivy (setuptools-vendored
+    # jaraco.context, wheel). Removing them is the root-cause fix.
+    pip uninstall -y setuptools wheel
 
 # Copy the application source code
 COPY src/ ./src/
