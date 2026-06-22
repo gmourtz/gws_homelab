@@ -27,6 +27,7 @@ data_dirs:
   - videos
   - music
   - music-inbox              # manual drop zone — also scanned by Navidrome
+  - podcasts                 # YouTube podcast playlist sync → Navidrome "Podcasts" library
   - youtube                  # token.json + client_secret.json live here
   - audiobooks
   - paperless-consume        # drop folder for Paperless-ngx auto-import

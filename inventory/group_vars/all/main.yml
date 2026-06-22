@@ -81,6 +81,13 @@ qbittorrent_categories:
   - { name: tv,     save_path: "/data/torrents/tv" }
   - { name: music,  save_path: "/data/torrents/music" }
 
+# One-time Navidrome UI steps (persist in the navidrome-data volume; only needed
+# again after a full volume wipe). Navidrome has no declarative config for these:
+#   - Podcasts library: Profile (top-right) → Libraries → Add → Name "Podcasts",
+#     Path "/podcasts" (mounted in stacks/optiplex.yml, deliberately OUTSIDE /music
+#     so the default music library doesn't also scan it). Keeps the YouTube podcast
+#     playlist separate from the music library.
+#
 # Navidrome plugins (downloaded by deploy-stacks.yml into the navidrome-data volume's plugins/ dir).
 # Pin to specific versions for reproducibility — bump when new versions are released.
 # After a fresh deploy: open https://navidrome.internal → Profile (top-right) → Plugins → enable each.

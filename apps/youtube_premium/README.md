@@ -8,6 +8,7 @@ It runs as a self-contained Docker application, designed to be simple, private, 
 
 - **Automatic Downloads:** Periodically checks your YouTube playlist and downloads any new videos.
 - **Automatic Deletion:** Removes videos and their associated metadata from your local storage when they are removed from the playlist.
+- **Age-Based Retention (optional):** Set `RETENTION_DAYS` to automatically delete downloads older than N days (e.g. a rolling one-month podcast window). Expired files are removed but not re-downloaded while they remain in the playlist.
 - **Metadata and Thumbnails:** Downloads video thumbnails, embeds metadata into the video files, and creates NFO files for full compatibility with media servers like Jellyfin.
 - **Local Storage:** Keeps all your videos on your own hardware.
 - **Stateful:** Remembers which videos have been downloaded to prevent duplicates.
@@ -38,6 +39,7 @@ The application can be configured using the following environment variables, whi
 -   `AUDIO_ONLY`: (Optional) Set to `true` to download only the audio track of videos. Defaults to `false`.
 -   `AUDIO_FORMAT`: (Optional) If `AUDIO_ONLY` is `true`, this specifies the audio format to download. Defaults to `m4a`.
 -   `STATE_FILE_NAME`: (Optional) The name of the file used to store the IDs of already downloaded videos. Defaults to `.downloaded_videos.log`.
+-   `RETENTION_DAYS`: (Optional) Delete downloaded files older than this many days (measured from download time). Defaults to `0`, which **disables** retention (files are only removed when pulled from the playlist). Expired files are deleted from disk but their IDs stay in the state file, so they are not re-downloaded while still present in the playlist.
 
 ## Setup and Configuration
 

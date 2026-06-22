@@ -264,6 +264,32 @@ services:
       timeout: 5s
       retries: 3
 
+  youtube-podcast-downloader:
+    image: ghcr.io/gmourtz/youtube_premium:latest
+    container_name: youtube-podcast-downloader
+    restart: unless-stopped
+    mem_limit: 1g
+    networks:
+      - youtube-podcast-net
+    volumes:
+      - /mnt/media/podcasts:/videos
+      - /mnt/media/youtube/token.json:/app/token.json
+      - /mnt/media/youtube/client_secret.json:/app/client_secret.json:ro
+    environment:
+      PLAYLIST_ID: PLZskJ7oz20HeScYkhKvF55tUmu0UhO66O
+      VIDEOS_DIR: /videos
+      TOKEN_FILE: token.json
+      POLL_INTERVAL: "600"   # podcasts drop less often than music — poll less aggressively
+      AUDIO_ONLY: "true"
+      AUDIO_FORMAT: best     # native Opus, no re-encode (see youtube-music-downloader)
+      STATE_FILE_NAME: .downloaded_podcasts.log
+      RETENTION_DAYS: "30"   # auto-delete episodes >1 month old (kept off the playlist re-download path)
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # --- Portfolio agent ---
   portfolio-agent:
     image: ghcr.io/gmourtz/portfolio_agent:latest
@@ -888,6 +914,7 @@ services:
       - navidrome-data:/data
       - /mnt/media/music:/music/playlist:ro
       - /mnt/media/music-inbox:/music/inbox:ro
+      - /mnt/media/podcasts:/podcasts:ro   # separate "Podcasts" library — mounted OUTSIDE /music so the default music library doesn't also scan it
     mem_limit: 256m
     cpus: "0.5"
     healthcheck:
@@ -1126,6 +1153,8 @@ networks:
   youtube-video-net:
     driver: bridge
   youtube-music-net:
+    driver: bridge
+  youtube-podcast-net:
     driver: bridge
   portfolio-net:
     driver: bridge

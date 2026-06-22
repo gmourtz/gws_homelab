@@ -11,6 +11,8 @@ import google.oauth2.credentials
 import google.auth.transport.requests
 import googleapiclient.discovery
 
+from retention import prune_old_files
+
 # --- Logging ---
 logging.basicConfig(
     level=logging.INFO,
@@ -27,6 +29,11 @@ TOKEN_FILE = os.getenv("TOKEN_FILE", "token.json")
 AUDIO_ONLY = os.getenv("AUDIO_ONLY", "false").lower() == "true"
 AUDIO_FORMAT = os.getenv("AUDIO_FORMAT", "m4a")
 STATE_FILE_NAME = os.getenv("STATE_FILE_NAME", ".downloaded_videos.log")
+# Age-based retention: delete downloaded files older than this many days.
+# 0 (default) disables retention — files are only removed when pulled from the
+# playlist. Expired files are deleted but their IDs stay in the state file, so
+# they are NOT re-downloaded while still present in the playlist.
+RETENTION_DAYS = int(os.getenv("RETENTION_DAYS", "0"))
 
 STATE_FILE = VIDEOS_DIR / STATE_FILE_NAME
 
@@ -122,30 +129,39 @@ def save_downloaded_videos(video_ids):
             f.write(f"{video_id}\n")
 
 
+def build_download_command(video_url):
+    """Builds the yt-dlp command for the given URL based on the configured mode.
+
+    ``--no-mtime`` keeps the file's mtime at download time (instead of the video's
+    upload date), which is what age-based retention measures against.
+    """
+    cmd = [
+        "yt-dlp",
+        "--no-mtime",
+        "-o", f"{VIDEOS_DIR}/%(title)s [%(id)s].%(ext)s",
+        video_url,
+    ]
+    if AUDIO_ONLY:
+        cmd.extend([
+            "--extract-audio",
+            "--audio-format", AUDIO_FORMAT,
+            "--audio-quality", "0",
+            "--embed-metadata",
+            "--embed-thumbnail",
+            "--parse-metadata", "uploader:%(artist)s",
+            "--parse-metadata", "title:%(title)s",
+        ])
+    else:
+        cmd.extend(["-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", "--merge-output-format", "mp4"])
+    return cmd
+
+
 def download_video(video_id):
     """Downloads the given video ID to the videos directory using yt-dlp."""
     video_url = f"https://www.youtube.com/watch?v={video_id}"
     log.info("Downloading: %s", video_url)
     try:
-        cmd = [
-            "yt-dlp",
-            "-o", f"{VIDEOS_DIR}/%(title)s [%(id)s].%(ext)s",
-            video_url,
-        ]
-        if AUDIO_ONLY:
-            cmd.extend([
-                "--extract-audio",
-                "--audio-format", AUDIO_FORMAT,
-                "--audio-quality", "0",
-                "--embed-metadata",
-                "--embed-thumbnail",
-                "--parse-metadata", "uploader:%(artist)s",
-                "--parse-metadata", "title:%(title)s",
-            ])
-        else:
-            cmd.extend(["-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", "--merge-output-format", "mp4"])
-
-        subprocess.run(cmd, check=True)
+        subprocess.run(build_download_command(video_url), check=True)
         log.info("Downloaded video ID: %s", video_id)
         return True
     except subprocess.CalledProcessError as e:
@@ -159,8 +175,10 @@ def delete_video_file(video_id):
     video_path = next(VIDEOS_DIR.glob(f"*[[]*{video_id}[]].*"), None)
 
     if not video_path:
-        log.warning("No file found for video ID %s in %s", video_id, VIDEOS_DIR)
-        return False
+        # Already absent (e.g. removed by retention) — treat as success so the
+        # caller drops the ID from state instead of retrying every poll.
+        log.debug("No file found for video ID %s in %s (already absent)", video_id, VIDEOS_DIR)
+        return True
 
     try:
         video_path.unlink()
@@ -173,8 +191,8 @@ def delete_video_file(video_id):
 
 def main():
     """Main application loop."""
-    log.info("Starting YouTube downloader — playlist=%s dir=%s audio=%s",
-             DOWNLOAD_PLAYLIST_ID, VIDEOS_DIR, AUDIO_ONLY)
+    log.info("Starting YouTube downloader — playlist=%s dir=%s audio=%s retention_days=%s",
+             DOWNLOAD_PLAYLIST_ID, VIDEOS_DIR, AUDIO_ONLY, RETENTION_DAYS or "disabled")
     VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
 
     youtube_service, credentials = get_youtube_service()
@@ -215,6 +233,11 @@ def main():
             save_downloaded_videos(downloaded_ids)
         else:
             log.info("Everything up to date.")
+
+        # Enforce age-based retention (no-op unless RETENTION_DAYS > 0). Expired
+        # files are removed from disk but their IDs remain in the state file, so
+        # they are not re-downloaded while still present in the playlist.
+        prune_old_files(VIDEOS_DIR, RETENTION_DAYS)
 
         # Persist refreshed credentials if the API client auto-refreshed them
         if credentials and credentials.token:
