@@ -75,7 +75,7 @@ make deploy                                     # site.yml: packages, SSH, UFW, 
 make stacks                                     # deploy-stacks.yml: pull and run all per-host compose stacks
 ```
 
-All hosts share one SSH key (`~/.ssh/id_ed25519_gws_homelab`) and user (`gws`). Password and root login are disabled. Convenience aliases live in `ssh.config` (`cat ssh.config >> ~/.ssh/config`, then `ssh optiplex`).
+All hosts share one SSH key (`~/.ssh/id_ed25519_gws_homelab`) and user (`gws`). Password and root login are disabled.
 
 ## Make targets
 

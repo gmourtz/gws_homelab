@@ -29,3 +29,6 @@ claude.md
 .claude/
 docs/
 TODO.md
+
+# Personal SSH config
+ssh.config
