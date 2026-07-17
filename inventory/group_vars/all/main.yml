@@ -329,9 +329,18 @@ event_scout_agent:
       - { name: "Platform Engineers London", url: "https://www.meetup.com/platform-engineers-london/events/ical/" }
       - { name: "Cloud Platform Eng London", url: "https://www.meetup.com/cloud-platform-engineering-london/events/ical/" }
       - { name: "London DevOps",             url: "https://www.meetup.com/london-devops/events/ical/" }
+      - { name: "Hugging Face London",       url: "https://www.meetup.com/hugging-face-london/events/ical/" }
+      - { name: "LLM London",                url: "https://www.meetup.com/llm-london/events/ical/" }
+      - { name: "London AI Agents",          url: "https://www.meetup.com/london-ai-agents/events/ical/" }
+      - { name: "GDG Cloud London",          url: "https://www.meetup.com/gdg-cloud-london/events/ical/" }
       # Luma calendars (London tech/AI/startup scene)
       - { name: "London Agentic AI",         url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-h0cZOlkq3AGhPoK" }
       - { name: "Claude Community Events",   url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-TOpA5LAFfuDeFpu" }
+      - { name: "LangChain in London",       url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-LCBqBsYxYlnyyyy" }
+      - { name: "MLOps Community",           url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-hVFFq931tAX36Id" }
+      - { name: "OpenAI Build Week",         url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-FhWvOxHV0AGL38z" }
+      - { name: "OpenAI for Startups",       url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-cRAkoeu56h8zaxC" }
+      - { name: "Open Source for AI",        url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-8zLyKMgaKTvonbT" }
       - { name: "Air Street (London AI)",    url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-zUWmkxeBGlQQenp" }
       - { name: "AI Engine",                 url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-a6GjHykuKt5q8iI" }
       - { name: "Vibe Coding Collective",    url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-2ARnYOB5PIHpxbh" }
@@ -343,3 +352,8 @@ event_scout_agent:
       - { name: "EB databricks",             url: "https://www.eventbrite.co.uk/d/united-kingdom--london/databricks/" }
       - { name: "EB snowflake",              url: "https://www.eventbrite.co.uk/d/united-kingdom--london/snowflake/" }
       - { name: "EB startups",               url: "https://www.eventbrite.co.uk/d/united-kingdom--london/startups/" }
+      - { name: "EB llm",                    url: "https://www.eventbrite.co.uk/d/united-kingdom--london/llm/" }
+      - { name: "EB generative ai",          url: "https://www.eventbrite.co.uk/d/united-kingdom--london/generative-ai/" }
+      - { name: "EB agentic ai",             url: "https://www.eventbrite.co.uk/d/united-kingdom--london/agentic-ai/" }
+      - { name: "EB dbt",                    url: "https://www.eventbrite.co.uk/d/united-kingdom--london/dbt/" }
+      - { name: "EB apache kafka",           url: "https://www.eventbrite.co.uk/d/united-kingdom--london/apache-kafka/" }
