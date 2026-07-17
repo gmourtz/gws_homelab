@@ -129,18 +129,33 @@ def run_cycle(cfg, ranker, notifier, store) -> int:
         key=lambda pair: -pair[1].score,
     )
 
+    sent_ok = True
     if selected:
-        notifier.send(build_digest(selected))
-        log.info("Notified %d events (min_score=%d)", len(selected), cfg["min_score"])
+        sent_ok = notifier.send(build_digest(selected))
+        if sent_ok:
+            log.info("Notified %d events (min_score=%d)", len(selected), cfg["min_score"])
+        else:
+            log.error(
+                "Digest send failed — %d selected events stay un-seen and retry next cycle",
+                len(selected),
+            )
     else:
         log.info("No events above min_score=%d — staying quiet", cfg["min_score"])
 
     # Rejected events are marked seen too (don't re-score daily); events whose
-    # ranking batch failed stay un-seen and retry next cycle.
-    store.mark_seen([e for e in fresh if e.uid in rankings])
+    # ranking batch failed stay un-seen and retry next cycle. If the digest send
+    # failed, the selected events also stay un-seen so they're re-notified.
+    selected_uids = {e.uid for e, _ in selected}
+    store.mark_seen(
+        [
+            e
+            for e in fresh
+            if e.uid in rankings and (sent_ok or e.uid not in selected_uids)
+        ]
+    )
     store.prune(now)
     store.save()
-    return len(selected)
+    return len(selected) if sent_ok else 0
 
 
 def main() -> None:

@@ -109,7 +109,9 @@ class EventRanker:
                     {"role": "user", "content": prompt},
                 ],
                 response_format=RankingResult,
-                max_tokens=2000,
+                # qwen3 is a thinking model — reasoning tokens count against
+                # this budget, and 2000 was hit in production
+                max_tokens=4000,
                 temperature=0.1,
             )
             parsed = response.choices[0].message.parsed
@@ -131,7 +133,7 @@ class EventRanker:
                         '"score": 0, "matched_topics": [], "reason": ""}, ...]}',
                     },
                 ],
-                max_tokens=2000,
+                max_tokens=4000,
                 temperature=0.1,
             )
             text = response.choices[0].message.content or ""

@@ -1,8 +1,10 @@
-"""Tests for the pure cycle-step functions in main.py."""
+"""Tests for the cycle-step functions in main.py."""
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock
 
-from main import build_digest, filter_events
+import sources
+from main import build_digest, filter_events, run_cycle
 from models import Event
 from ranker import EventRanking
 from store import SeenStore
@@ -37,6 +39,55 @@ class TestFilterEvents:
         kept = filter_events(events, now, lookahead_days=45, seen_store=store)
 
         assert [e.uid for e in kept] == ["fresh"]
+
+
+class TestRunCycleSendSemantics:
+    def _setup(self, tmp_path, monkeypatch, send_ok):
+        now = datetime.now(timezone.utc)
+        events = [
+            _event("selected", now + timedelta(days=2)),
+            _event("rejected", now + timedelta(days=3)),
+        ]
+        monkeypatch.setattr(sources, "fetch_all", lambda s: events)
+        monkeypatch.setattr(
+            sources, "enrich_luma_descriptions", lambda evs, delay=0.3: 0
+        )
+        cfg = {
+            "location": "London",
+            "lookahead_days": 45,
+            "min_score": 6,
+            "include_online": False,
+            "notes": "",
+            "topics": ["AI"],
+            "sources": {},
+        }
+        ranker = MagicMock()
+        ranker.rank.return_value = {
+            "selected": EventRanking(event_id=0, score=9, matched_topics=["AI"], reason="x"),
+            "rejected": EventRanking(event_id=1, score=2, matched_topics=[], reason="x"),
+        }
+        notifier = MagicMock()
+        notifier.send.return_value = send_ok
+        store = SeenStore(str(tmp_path))
+        return cfg, ranker, notifier, store
+
+    def test_failed_send_leaves_selected_events_unseen_for_retry(self, tmp_path, monkeypatch):
+        cfg, ranker, notifier, store = self._setup(tmp_path, monkeypatch, send_ok=False)
+
+        notified = run_cycle(cfg, ranker, notifier, store)
+
+        assert notified == 0
+        assert not store.is_seen("selected")  # retries next cycle
+        assert store.is_seen("rejected")  # low scores aren't re-ranked daily
+
+    def test_successful_send_marks_all_ranked_seen(self, tmp_path, monkeypatch):
+        cfg, ranker, notifier, store = self._setup(tmp_path, monkeypatch, send_ok=True)
+
+        notified = run_cycle(cfg, ranker, notifier, store)
+
+        assert notified == 1
+        assert store.is_seen("selected")
+        assert store.is_seen("rejected")
 
 
 class TestBuildDigest:
