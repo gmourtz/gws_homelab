@@ -283,12 +283,20 @@ event_scout_agent:
   include_online: false
   topics:
     - data engineering
-    - AI / LLMs / agents
-    - startups
+    - AI / LLMs / agents — especially agent harnesses, agentic development, and agent engineering
+    - AI/data startup engineering/product events and founder talks (NOT generic networking or pitch nights)
     - Databricks
     - Anthropic / Claude
     - OpenAI / ChatGPT
     - Snowflake / dbt
+    - AWS
+  # Free-text preferences injected into the ranking prompt
+  notes: >-
+    The user is a senior data platform engineer — exclude beginner/introductory
+    courses, bootcamps, and "from zero" training; prefer practitioner-level and
+    advanced content. Score higher when a founder or technical C-level/VP-level
+    executive of a tech company (CTO, VP Engineering, Head of AI/Data, etc.)
+    is speaking at the event.
   sources:
     ics:
       # Meetup groups (slug verified July 2026)
@@ -303,7 +311,12 @@ event_scout_agent:
       - { name: "Big Data & ML London",      url: "https://www.meetup.com/big-data-and-machine-learning-london/events/ical/" }
       - { name: "Startup Grind London",      url: "https://www.meetup.com/startup-grind-london/events/ical/" }
       - { name: "GenAI London",              url: "https://www.meetup.com/genai-london/events/ical/" }
+      - { name: "AWS UG London (DevOps)",    url: "https://www.meetup.com/aws-user-group-london/events/ical/" }
+      - { name: "AWS Well-Architected UG",   url: "https://www.meetup.com/aws-london-well-architected-user-group/events/ical/" }
+      - { name: "UK Databricks UG",          url: "https://www.meetup.com/databricks-practitioners-uk/events/ical/" }
+      - { name: "Claude Code Central London", url: "https://www.meetup.com/claude-code-central-london-meetup-group/events/ical/" }
       # Luma calendars (London tech/AI/startup scene)
+      - { name: "Claude Community Events",   url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-TOpA5LAFfuDeFpu" }
       - { name: "Air Street (London AI)",    url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-zUWmkxeBGlQQenp" }
       - { name: "AI Engine",                 url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-a6GjHykuKt5q8iI" }
       - { name: "Vibe Coding Collective",    url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-2ARnYOB5PIHpxbh" }

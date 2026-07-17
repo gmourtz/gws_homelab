@@ -69,13 +69,14 @@ class EventRanker:
         topics: list[str],
         location: str,
         include_online: bool = False,
+        notes: str = "",
     ) -> dict[str, EventRanking]:
         """Score events. Events in failed batches are omitted from the result —
         the caller leaves them un-seen so they retry next cycle."""
         results: dict[str, EventRanking] = {}
         for i in range(0, len(events), BATCH_SIZE):
             batch = events[i : i + BATCH_SIZE]
-            rankings = self._rank_batch(batch, topics, location, include_online)
+            rankings = self._rank_batch(batch, topics, location, include_online, notes)
             for ranking in rankings:
                 if 0 <= ranking.event_id < len(batch):
                     event = batch[ranking.event_id]
@@ -97,8 +98,9 @@ class EventRanker:
         topics: list[str],
         location: str,
         include_online: bool,
+        notes: str = "",
     ) -> list[EventRanking]:
-        prompt = self._build_prompt(batch, topics, location, include_online)
+        prompt = self._build_prompt(batch, topics, location, include_online, notes)
         try:
             response = self.client.beta.chat.completions.parse(
                 model=self.model,
@@ -149,6 +151,7 @@ class EventRanker:
         topics: list[str],
         location: str,
         include_online: bool,
+        notes: str = "",
     ) -> str:
         lines = [
             f"User's city: {location}",
@@ -156,6 +159,8 @@ class EventRanker:
             "User's topics of interest:",
         ]
         lines.extend(f"  - {t}" for t in topics)
+        if notes:
+            lines.append(f"Additional preferences: {notes}")
         lines.append("")
         lines.append(f"Score these {len(batch)} events:")
         for idx, event in enumerate(batch):
@@ -167,5 +172,6 @@ class EventRanker:
                 lines.append(f"  Where: {event.location}")
             lines.append(f"  Source: {event.source_name}")
             if event.description:
-                lines.append(f"  Description: {event.description[:400]}")
+                # wide enough to include speaker lineups, which sit deep in the text
+                lines.append(f"  Description: {event.description[:800]}")
         return "\n".join(lines)

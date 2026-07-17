@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from datetime import datetime, timezone
 
 import requests
@@ -28,6 +29,10 @@ TIMEOUT = 30
 _URL_RE = re.compile(r"https?://[^\s<>\"\\]+")
 _LDJSON_RE = re.compile(
     r'<script type="application/ld\+json">(.*?)</script>', re.DOTALL
+)
+_LUMA_URL_RE = re.compile(r"https?://(?:lu\.ma|luma\.com)/[A-Za-z0-9\-_.]+")
+_NEXT_DATA_RE = re.compile(
+    r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', re.DOTALL
 )
 
 
@@ -141,6 +146,50 @@ def fetch_eventbrite(name: str, search_url: str) -> list[Event]:
             )
     log.info("[%s] %d events from Eventbrite page", name, len(events))
     return events
+
+
+def _mirror_text(node) -> str:
+    """Flatten a ProseMirror document (Luma's rich-text format) to plain text."""
+    if not isinstance(node, dict):
+        return ""
+    if node.get("type") == "text":
+        return node.get("text", "")
+    text = "".join(_mirror_text(c) for c in node.get("content", []) or [])
+    if node.get("type") in ("paragraph", "heading", "listItem"):
+        text += "\n"
+    return text
+
+
+def enrich_luma_descriptions(events: list[Event], delay: float = 0.3) -> int:
+    """Luma ICS descriptions are stubs ("Get up-to-date information at: ...").
+    Fetch each event's page and append the full description from its embedded
+    __NEXT_DATA__ JSON, so the ranker sees speaker lineups and event detail.
+    Returns the number of events enriched. Failures are soft per event."""
+    enriched = 0
+    for event in events:
+        match = _LUMA_URL_RE.search(event.description) or _LUMA_URL_RE.search(event.url)
+        if not match:
+            continue
+        try:
+            resp = requests.get(match.group(0), headers=HEADERS, timeout=TIMEOUT)
+            resp.raise_for_status()
+            data_match = _NEXT_DATA_RE.search(resp.text)
+            if not data_match:
+                continue
+            data = json.loads(data_match.group(1))
+            mirror = data["props"]["pageProps"]["initialData"]["data"].get(
+                "description_mirror"
+            )
+            text = _mirror_text(mirror).strip()
+            if text:
+                # keep the stub — its "Hosted by ..." line is signal too
+                event.description = f"{event.description}\n\n{text}"[:2000]
+                enriched += 1
+        except Exception as e:
+            log.warning("Luma enrichment failed for %s: %s", event.title, e)
+        if delay:
+            time.sleep(delay)
+    return enriched
 
 
 def fetch_all(sources: dict) -> list[Event]:

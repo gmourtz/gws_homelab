@@ -56,6 +56,7 @@ def load_config(path: str) -> dict:
     cfg.setdefault("lookahead_days", 45)
     cfg.setdefault("min_score", 6)
     cfg.setdefault("include_online", False)
+    cfg.setdefault("notes", "")
     cfg.setdefault("topics", [])
     cfg.setdefault("sources", {})
     if not cfg["topics"] or not cfg["sources"]:
@@ -95,7 +96,7 @@ def build_digest(selected) -> str:
 
 
 def run_cycle(cfg, ranker, notifier, store) -> int:
-    from sources import fetch_all
+    from sources import enrich_luma_descriptions, fetch_all
 
     now = datetime.now(timezone.utc)
 
@@ -109,8 +110,13 @@ def run_cycle(cfg, ranker, notifier, store) -> int:
         store.save()
         return 0
 
+    # only fresh events — a handful per day after the initial backfill
+    enriched = enrich_luma_descriptions(fresh)
+    if enriched:
+        log.info("Enriched %d Luma events with full descriptions", enriched)
+
     rankings = ranker.rank(
-        fresh, cfg["topics"], cfg["location"], cfg["include_online"]
+        fresh, cfg["topics"], cfg["location"], cfg["include_online"], cfg["notes"]
     )
     log.info("Ranked %d/%d events", len(rankings), len(fresh))
 

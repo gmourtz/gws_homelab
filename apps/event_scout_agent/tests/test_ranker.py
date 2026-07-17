@@ -101,3 +101,11 @@ def test_prompt_contains_topics_location_and_events():
     assert "User's city: London" in prompt
     assert "Online-only events allowed: no" in prompt
     assert "Event id: 0" in prompt
+    assert "Additional preferences" not in prompt
+
+
+def test_prompt_includes_notes_when_set():
+    prompt = EventRanker._build_prompt(
+        [_event("a")], ["AI"], "London", False, notes="no beginner events"
+    )
+    assert "Additional preferences: no beginner events" in prompt

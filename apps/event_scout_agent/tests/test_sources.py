@@ -7,7 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import sources
-from sources import fetch_all, fetch_eventbrite, fetch_ics
+from sources import enrich_luma_descriptions, fetch_all, fetch_eventbrite, fetch_ics
+from models import Event
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -86,6 +87,51 @@ class TestFetchEventbrite:
         with patch.object(sources.requests, "get", return_value=eventbrite_response):
             events = fetch_eventbrite("x", "https://example.com/d/x/")
         assert all(e.url for e in events)
+
+
+def _luma_event(uid: str = "a", description: str = "") -> Event:
+    return Event(
+        uid=uid,
+        title="Claude Community Meetup",
+        description=description
+        or "Get up-to-date information at: https://luma.com/claude-wx2j\n\nHosted by X",
+        start=datetime(2026, 8, 1, 18, 0, tzinfo=timezone.utc),
+        url="https://luma.com/claude-wx2j",
+        source_name="Claude Community Events",
+        source_type="ics",
+    )
+
+
+class TestEnrichLuma:
+    def test_appends_full_description_from_event_page(self):
+        page = _mock_response((FIXTURES / "luma_event.html").read_bytes())
+        event = _luma_event()
+        with patch.object(sources.requests, "get", return_value=page):
+            enriched = enrich_luma_descriptions([event], delay=0)
+
+        assert enriched == 1
+        assert event.description.startswith("Get up-to-date information")
+        assert "founders, builders, AI-native operators" in event.description
+        assert len(event.description) <= 2000
+
+    def test_non_luma_event_untouched(self):
+        event = _luma_event(description="A normal Meetup description")
+        event.url = "https://www.meetup.com/x/events/1/"
+        with patch.object(sources.requests, "get") as get:
+            enriched = enrich_luma_descriptions([event], delay=0)
+
+        assert enriched == 0
+        get.assert_not_called()
+        assert event.description == "A normal Meetup description"
+
+    def test_fetch_failure_is_soft(self):
+        event = _luma_event()
+        original = event.description
+        with patch.object(sources.requests, "get", side_effect=ConnectionError("boom")):
+            enriched = enrich_luma_descriptions([event], delay=0)
+
+        assert enriched == 0
+        assert event.description == original
 
 
 class TestFetchAll:

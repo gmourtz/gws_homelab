@@ -10,12 +10,20 @@ include_online: false
 
 topics:
   - data engineering
-  - AI / LLMs / agents
-  - startups
+  - AI / LLMs / agents — especially agent harnesses, agentic development, and agent engineering
+  - AI/data startup engineering/product events and founder talks (NOT generic networking or pitch nights)
   - Databricks
   - Anthropic / Claude
   - OpenAI / ChatGPT
   - Snowflake / dbt
+  - AWS
+
+notes: >-
+  The user is a senior data platform engineer — exclude beginner/introductory
+  courses, bootcamps, and "from zero" training; prefer practitioner-level and
+  advanced content. Score higher when a founder or technical C-level/VP-level
+  executive of a tech company (CTO, VP Engineering, Head of AI/Data, etc.)
+  is speaking at the event.
 
 sources:
   ics:
