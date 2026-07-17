@@ -37,7 +37,7 @@ are all free, auth-less, and structured.
 | `OPENAI_MODEL` | `qwen3:8b` | Ranking model |
 | `TELEGRAM_BOT_TOKEN` | — (required) | Bot token |
 | `TELEGRAM_CHAT_ID` | — (required) | Destination chat |
-| `POLL_INTERVAL` | `86400` | Seconds between cycles |
+| `RUN_AT_HOUR` | `5` | Daily cycle anchor hour (0-23, Europe/London) |
 | `DATA_DIR` | `./data` | State directory (volume in production) |
 | `CONFIG_PATH` | `/data/config.yml` | Topics/sources config |
 | `LOG_LEVEL` | `INFO` | `DEBUG` logs every LLM ranking, including rejected events |

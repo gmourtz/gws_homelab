@@ -26,7 +26,7 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "qwen3:8b")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL") or None
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
-POLL_INTERVAL = int(os.getenv("POLL_INTERVAL") or "86400")
+RUN_AT_HOUR = os.getenv("RUN_AT_HOUR", "5")  # daily cycle anchor hour in DISPLAY_TZ
 DATA_DIR = os.getenv("DATA_DIR", "")
 CONFIG_PATH = os.getenv("CONFIG_PATH", "/data/config.yml")
 
@@ -47,6 +47,9 @@ def validate_config(once: bool = False) -> None:
     if not os.path.exists(CONFIG_PATH):
         log.error("Config file not found: %s (set CONFIG_PATH)", CONFIG_PATH)
         sys.exit(1)
+    if not (RUN_AT_HOUR.isdigit() and 0 <= int(RUN_AT_HOUR) <= 23):
+        log.error("RUN_AT_HOUR must be 0-23, got %r", RUN_AT_HOUR)
+        sys.exit(1)
 
 
 def load_config(path: str) -> dict:
@@ -63,6 +66,16 @@ def load_config(path: str) -> dict:
         log.error("Config must define both 'topics' and 'sources'")
         sys.exit(1)
     return cfg
+
+
+def seconds_until_hour(hour: int, now: datetime | None = None) -> float:
+    """Seconds until the next `hour`:00 wall-clock time in DISPLAY_TZ (DST-aware)."""
+    now = (now or datetime.now(DISPLAY_TZ)).astimezone(DISPLAY_TZ)
+    target = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+    if target <= now:
+        target += timedelta(days=1)
+    # same-tzinfo subtraction is wall-clock and ignores DST; compare in UTC
+    return (target.astimezone(timezone.utc) - now.astimezone(timezone.utc)).total_seconds()
 
 
 def filter_events(events, now, lookahead_days, seen_store):
@@ -164,12 +177,13 @@ def main() -> None:
     cfg = load_config(CONFIG_PATH)
     log.info(
         "Event scout starting — %d topics, %d ICS feeds, %d Eventbrite searches, "
-        "location=%s, interval=%ds%s",
+        "location=%s, daily at %02d:00 %s%s",
         len(cfg["topics"]),
         len(cfg["sources"].get("ics", []) or []),
         len(cfg["sources"].get("eventbrite_searches", []) or []),
         cfg["location"],
-        POLL_INTERVAL,
+        int(RUN_AT_HOUR),
+        DISPLAY_TZ.key,
         " (single cycle)" if once else "",
     )
 
@@ -201,8 +215,11 @@ def main() -> None:
 
             if once:
                 break
-            sleep_time = max(0, POLL_INTERVAL - elapsed)
-            log.info("Next cycle in %.0f seconds", sleep_time)
+            sleep_time = seconds_until_hour(int(RUN_AT_HOUR))
+            log.info(
+                "Next cycle at %02d:00 %s — in %.0f seconds",
+                int(RUN_AT_HOUR), DISPLAY_TZ.key, sleep_time,
+            )
             time.sleep(sleep_time)
 
         except KeyboardInterrupt:

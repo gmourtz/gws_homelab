@@ -3,11 +3,15 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
+from zoneinfo import ZoneInfo
+
 import sources
-from main import build_digest, filter_events, run_cycle
+from main import build_digest, filter_events, run_cycle, seconds_until_hour
 from models import Event
 from ranker import EventRanking
 from store import SeenStore
+
+LONDON = ZoneInfo("Europe/London")
 
 
 def _event(uid: str, start: datetime) -> Event:
@@ -39,6 +43,25 @@ class TestFilterEvents:
         kept = filter_events(events, now, lookahead_days=45, seen_store=store)
 
         assert [e.uid for e in kept] == ["fresh"]
+
+
+class TestSecondsUntilHour:
+    def test_hour_later_today(self):
+        now = datetime(2026, 1, 15, 3, 0, tzinfo=LONDON)
+        assert seconds_until_hour(5, now) == 2 * 3600
+
+    def test_hour_already_passed_rolls_to_tomorrow(self):
+        now = datetime(2026, 1, 15, 6, 0, tzinfo=LONDON)
+        assert seconds_until_hour(5, now) == 23 * 3600
+
+    def test_exactly_on_the_hour_rolls_to_tomorrow(self):
+        now = datetime(2026, 1, 15, 5, 0, tzinfo=LONDON)
+        assert seconds_until_hour(5, now) == 24 * 3600
+
+    def test_dst_transition_keeps_wall_clock(self):
+        # clocks go forward 29 Mar 2026: 01:00 GMT -> 02:00 BST (23h day)
+        now = datetime(2026, 3, 28, 5, 0, tzinfo=LONDON)
+        assert seconds_until_hour(5, now) == 23 * 3600
 
 
 class TestRunCycleSendSemantics:
