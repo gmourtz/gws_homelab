@@ -101,6 +101,7 @@ class EventRanker:
         notes: str = "",
     ) -> list[EventRanking]:
         prompt = self._build_prompt(batch, topics, location, include_online, notes)
+        log.debug("Ranking prompt (%d events):\n%s", len(batch), prompt)
         try:
             response = self.client.beta.chat.completions.parse(
                 model=self.model,
