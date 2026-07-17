@@ -1,0 +1,29 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Meetup//Meetup Calendar 1.0//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+NAME:PyData London
+X-WR-CALNAME:PyData London
+BEGIN:VEVENT
+UID:event_315269445@meetup.com
+SEQUENCE:1
+DTSTAMP:20260716T225231Z
+DTSTART;TZID=Europe/London:20260724T183000
+DTEND;TZID=Europe/London:20260724T210000
+SUMMARY:PyData London Meetup #93
+DESCRIPTION:PyData London Meetup\nTalks on data engineering and LLM agents
+ .\nDetails and RSVP: https://www.meetup.com/pydata-london-meetup/events/31
+ 5269445/
+LOCATION:Man Group\, Riverbank House\, London
+END:VEVENT
+BEGIN:VEVENT
+UID:event_allday@meetup.com
+DTSTAMP:20260716T225231Z
+DTSTART;VALUE=DATE:20260801
+SUMMARY:All-day Hackathon
+DESCRIPTION:A full-day event with no time component.
+URL:https://www.meetup.com/example/events/999/
+LOCATION:Shoreditch\, London
+END:VEVENT
+END:VCALENDAR

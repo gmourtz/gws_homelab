@@ -258,3 +258,60 @@ miniflux_feeds:
   - { url: "https://www.reddit.com/r/OpenSignups/new/.rss",      category: "Trackers" }
   - { url: "https://www.reddit.com/r/trackers/new/.rss",         category: "Trackers" }
   - { url: "https://opentrackers.org/feed/",                     category: "Trackers" }
+
+# ---------------------------------------------------------------------------
+# Event scout (apps/event_scout_agent — runs on optiplex)
+#
+# Rendered to /data/config.yml in the event-scout-agent container by
+# deploy-stacks.yml (stacks/event-scout-agent-config.yml.j2). The app re-reads the
+# file every cycle. To change topics or add a source: edit here, `make stacks`.
+#
+# Sources (all free, no auth):
+#   Meetup group:   https://www.meetup.com/<group-slug>/events/ical/
+#   Luma calendar:  https://api.lu.ma/ics/get?entity=calendar&id=<cal-...>
+#   Eventbrite:     https://www.eventbrite.co.uk/d/united-kingdom--london/<keyword>/
+#   Anything else with an iCal feed goes under `ics:`.
+#
+# The service only deploys once vault_event_scout_telegram_bot_token and
+# vault_event_scout_telegram_chat_id exist (dedicated bot:
+# t.me/gws_events_scout_bot — separate from the portfolio-agent bot).
+# ---------------------------------------------------------------------------
+event_scout_agent:
+  location: "London"
+  lookahead_days: 45
+  min_score: 6          # 0-10; only events scoring >= this are notified
+  include_online: false
+  topics:
+    - data engineering
+    - AI / LLMs / agents
+    - startups
+    - Databricks
+    - Anthropic / Claude
+    - OpenAI / ChatGPT
+    - Snowflake / dbt
+  sources:
+    ics:
+      # Meetup groups (slug verified July 2026)
+      - { name: "PyData London",             url: "https://www.meetup.com/pydata-london-meetup/events/ical/" }
+      - { name: "Data Engineering London",   url: "https://www.meetup.com/data-engineering-london/events/ical/" }
+      - { name: "Data & AI London",          url: "https://www.meetup.com/data-ai-london/events/ical/" }
+      - { name: "London Machine Learning",   url: "https://www.meetup.com/london-machine-learning-meetup/events/ical/" }
+      - { name: "MLOps London",              url: "https://www.meetup.com/mlops-london/events/ical/" }
+      - { name: "London dbt Meetup",         url: "https://www.meetup.com/london-dbt-meetup/events/ical/" }
+      - { name: "Snowflake UG London",       url: "https://www.meetup.com/snowflake-user-group-london/events/ical/" }
+      - { name: "Data Council London",       url: "https://www.meetup.com/datacouncil-ai-london-data-engineering-and-science/events/ical/" }
+      - { name: "Big Data & ML London",      url: "https://www.meetup.com/big-data-and-machine-learning-london/events/ical/" }
+      - { name: "Startup Grind London",      url: "https://www.meetup.com/startup-grind-london/events/ical/" }
+      - { name: "GenAI London",              url: "https://www.meetup.com/genai-london/events/ical/" }
+      # Luma calendars (London tech/AI/startup scene)
+      - { name: "Air Street (London AI)",    url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-zUWmkxeBGlQQenp" }
+      - { name: "AI Engine",                 url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-a6GjHykuKt5q8iI" }
+      - { name: "Vibe Coding Collective",    url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-2ARnYOB5PIHpxbh" }
+      - { name: "Jumpstart (startups)",      url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-inj4UfkKnAAR9X5" }
+      - { name: "incident.io events",        url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-0jikzPhENNNJBGU" }
+    eventbrite_searches:
+      - { name: "EB data engineering",       url: "https://www.eventbrite.co.uk/d/united-kingdom--london/data-engineering/" }
+      - { name: "EB artificial intelligence", url: "https://www.eventbrite.co.uk/d/united-kingdom--london/artificial-intelligence/" }
+      - { name: "EB databricks",             url: "https://www.eventbrite.co.uk/d/united-kingdom--london/databricks/" }
+      - { name: "EB snowflake",              url: "https://www.eventbrite.co.uk/d/united-kingdom--london/snowflake/" }
+      - { name: "EB startups",               url: "https://www.eventbrite.co.uk/d/united-kingdom--london/startups/" }

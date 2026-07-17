@@ -227,6 +227,21 @@
       when: inventory_hostname == 'optiplex'
       notify: Restart jellyfin
 
+    # --- Event scout config (optiplex only) ---
+    # Topics/sources/thresholds rendered from the `event_scout_agent` var. The app
+    # re-reads the file each cycle, but restart anyway so changes apply now.
+    - name: Write event scout config to volume
+      ansible.builtin.template:
+        src: "{{ stacks_src }}/event-scout-agent-config.yml.j2"
+        dest: /var/lib/docker/volumes/stacks_event-scout-agent-data/_data/config.yml
+        mode: "0644"
+      when:
+        - inventory_hostname == 'optiplex'
+        - event_scout_agent is defined
+        - vault_event_scout_telegram_bot_token is defined
+        - vault_event_scout_telegram_chat_id is defined
+      notify: Restart event-scout-agent
+
     # --- Price monitor watchlist (optiplex only) ---
     - name: Write price monitor watchlist to volume
       ansible.builtin.copy:
@@ -538,6 +553,10 @@
 
     - name: Restart price-monitor
       ansible.builtin.command: docker restart price-monitor
+      changed_when: true
+
+    - name: Restart event-scout-agent
+      ansible.builtin.command: docker restart event-scout-agent
       changed_when: true
 
     - name: Restart slskd

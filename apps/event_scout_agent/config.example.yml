@@ -1,0 +1,28 @@
+# Example config for local development / dry runs.
+# In production this file is templated by Ansible from the `event_scout_agent`
+# var in inventory/group_vars/all/main.yml (stacks/event-scout-agent-config.yml.j2)
+# and written into the container volume at /data/config.yml.
+
+location: "London"
+lookahead_days: 45
+min_score: 6
+include_online: false
+
+topics:
+  - data engineering
+  - AI / LLMs / agents
+  - startups
+  - Databricks
+  - Anthropic / Claude
+  - OpenAI / ChatGPT
+  - Snowflake / dbt
+
+sources:
+  ics:
+    - name: "PyData London"
+      url: "https://www.meetup.com/pydata-london-meetup/events/ical/"
+    - name: "Air Street (London AI)"
+      url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-zUWmkxeBGlQQenp"
+  eventbrite_searches:
+    - name: "EB data engineering"
+      url: "https://www.eventbrite.co.uk/d/united-kingdom--london/data-engineering/"

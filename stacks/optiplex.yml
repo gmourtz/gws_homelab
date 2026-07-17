@@ -319,6 +319,38 @@ services:
       timeout: 5s
       retries: 3
 
+{% if vault_event_scout_telegram_bot_token is defined and vault_event_scout_telegram_chat_id is defined %}
+  # --- Event scout ---
+  # Watches Meetup/Luma ICS feeds + Eventbrite search pages, ranks new events
+  # against the topics in the `event_scout_agent` var (group_vars/all/main.yml) via
+  # local Ollama, and Telegrams a digest via its own dedicated bot
+  # (t.me/gws_events_scout_bot). Config is templated by deploy-stacks
+  # into the event-scout-agent-data volume — edit the var and run `make stacks`.
+  event-scout-agent:
+    image: ghcr.io/gmourtz/event_scout_agent:latest
+    container_name: event-scout-agent
+    restart: unless-stopped
+    mem_limit: 256m
+    networks:
+      - event-scout-agent-net
+    volumes:
+      - event-scout-agent-data:/data
+    environment:
+      OPENAI_API_KEY: "ollama"
+      OPENAI_BASE_URL: "http://localllm.internal:11434/v1"
+      OPENAI_MODEL: "qwen3:8b"
+      TELEGRAM_BOT_TOKEN: "{{ vault_event_scout_telegram_bot_token }}"
+      TELEGRAM_CHAT_ID: "{{ vault_event_scout_telegram_chat_id }}"
+      POLL_INTERVAL: "86400"
+      DATA_DIR: "/data"
+      CONFIG_PATH: "/data/config.yml"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+{% endif %}
+
   # --- Air quality monitoring ---
   # Collector polls the Awair Element sensors and writes the SQLite DB.
   air-quality-collector:
@@ -1199,6 +1231,10 @@ networks:
     driver: bridge
   miniflux-net:
     driver: bridge
+{% if vault_event_scout_telegram_bot_token is defined and vault_event_scout_telegram_chat_id is defined %}
+  event-scout-agent-net:
+    driver: bridge
+{% endif %}
 
 volumes:
   caddy-data:
@@ -1243,4 +1279,7 @@ volumes:
   paperless-gpt-db:
   air-quality-data:
   miniflux-postgres-data:
+{% if vault_event_scout_telegram_bot_token is defined and vault_event_scout_telegram_chat_id is defined %}
+  event-scout-agent-data:
+{% endif %}
 

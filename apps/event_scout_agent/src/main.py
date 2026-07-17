@@ -1,0 +1,199 @@
+"""Event scout — fetches event feeds, ranks new events against the user's
+topics via LLM, and Telegrams a digest. Config (topics/sources/thresholds)
+comes from a YAML file templated by Ansible and re-read every cycle."""
+
+import logging
+import os
+import sys
+import time
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+import yaml
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+log = logging.getLogger(__name__)
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "qwen3:8b")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL") or None
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+POLL_INTERVAL = int(os.getenv("POLL_INTERVAL") or "86400")
+DATA_DIR = os.getenv("DATA_DIR", "")
+CONFIG_PATH = os.getenv("CONFIG_PATH", "/data/config.yml")
+
+DISPLAY_TZ = ZoneInfo("Europe/London")
+
+
+def validate_config(once: bool = False) -> None:
+    """Exit early if required env vars / config are missing."""
+    required = {"OPENAI_API_KEY": OPENAI_API_KEY}
+    if not once:
+        # --once without Telegram creds falls back to console output
+        required["TELEGRAM_BOT_TOKEN"] = TELEGRAM_BOT_TOKEN
+        required["TELEGRAM_CHAT_ID"] = TELEGRAM_CHAT_ID
+    missing = [k for k, v in required.items() if not v]
+    if missing:
+        log.error("Missing required env vars: %s", ", ".join(missing))
+        sys.exit(1)
+    if not os.path.exists(CONFIG_PATH):
+        log.error("Config file not found: %s (set CONFIG_PATH)", CONFIG_PATH)
+        sys.exit(1)
+
+
+def load_config(path: str) -> dict:
+    with open(path) as f:
+        cfg = yaml.safe_load(f) or {}
+    cfg.setdefault("location", "London")
+    cfg.setdefault("lookahead_days", 45)
+    cfg.setdefault("min_score", 6)
+    cfg.setdefault("include_online", False)
+    cfg.setdefault("topics", [])
+    cfg.setdefault("sources", {})
+    if not cfg["topics"] or not cfg["sources"]:
+        log.error("Config must define both 'topics' and 'sources'")
+        sys.exit(1)
+    return cfg
+
+
+def filter_events(events, now, lookahead_days, seen_store):
+    horizon = now + timedelta(days=lookahead_days)
+    return [
+        e
+        for e in events
+        if now <= e.start <= horizon and not seen_store.is_seen(e.uid)
+    ]
+
+
+def build_digest(selected) -> str:
+    lines = [f"📅 *{len(selected)} new event{'s' if len(selected) != 1 else ''} for you*"]
+    for event, ranking in selected:
+        local = event.start.astimezone(DISPLAY_TZ)
+        # date-only sources (Eventbrite JSON-LD, all-day ICS) land at midnight
+        if event.start.hour == 0 and event.start.minute == 0:
+            when = local.strftime("%a %d %b")
+        else:
+            when = local.strftime("%a %d %b, %H:%M")
+        lines.append("")
+        lines.append(f"*{event.title}*")
+        where = f" · {event.location}" if event.location else ""
+        lines.append(f"📆 {when}{where}")
+        topics = ", ".join(ranking.matched_topics) or "general"
+        lines.append(f"⭐ {ranking.score}/10 — {topics}")
+        if ranking.reason:
+            lines.append(f"_{ranking.reason}_")
+        lines.append(f"🔗 {event.url}")
+    return "\n".join(lines)
+
+
+def run_cycle(cfg, ranker, notifier, store) -> int:
+    from sources import fetch_all
+
+    now = datetime.now(timezone.utc)
+
+    events = fetch_all(cfg["sources"])
+    log.info("Fetched %d events across all sources", len(events))
+
+    fresh = filter_events(events, now, cfg["lookahead_days"], store)
+    log.info("%d new events after date/dedup filter", len(fresh))
+    if not fresh:
+        store.prune(now)
+        store.save()
+        return 0
+
+    rankings = ranker.rank(
+        fresh, cfg["topics"], cfg["location"], cfg["include_online"]
+    )
+    log.info("Ranked %d/%d events", len(rankings), len(fresh))
+
+    selected = sorted(
+        (
+            (e, rankings[e.uid])
+            for e in fresh
+            if e.uid in rankings and rankings[e.uid].score >= cfg["min_score"]
+        ),
+        key=lambda pair: -pair[1].score,
+    )
+
+    if selected:
+        notifier.send(build_digest(selected))
+        log.info("Notified %d events (min_score=%d)", len(selected), cfg["min_score"])
+    else:
+        log.info("No events above min_score=%d — staying quiet", cfg["min_score"])
+
+    # Rejected events are marked seen too (don't re-score daily); events whose
+    # ranking batch failed stay un-seen and retry next cycle.
+    store.mark_seen([e for e in fresh if e.uid in rankings])
+    store.prune(now)
+    store.save()
+    return len(selected)
+
+
+def main() -> None:
+    once = "--once" in sys.argv
+    validate_config(once)
+    cfg = load_config(CONFIG_PATH)
+    log.info(
+        "Event scout starting — %d topics, %d ICS feeds, %d Eventbrite searches, "
+        "location=%s, interval=%ds%s",
+        len(cfg["topics"]),
+        len(cfg["sources"].get("ics", []) or []),
+        len(cfg["sources"].get("eventbrite_searches", []) or []),
+        cfg["location"],
+        POLL_INTERVAL,
+        " (single cycle)" if once else "",
+    )
+
+    from notifier import ConsoleNotifier, TelegramNotifier
+    from ranker import EventRanker
+    from store import SeenStore
+
+    if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+        notifier = TelegramNotifier(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+    else:
+        log.warning("Telegram not configured — printing digests to stdout")
+        notifier = ConsoleNotifier()
+
+    ranker = EventRanker(OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL)
+    store = SeenStore(DATA_DIR or None)
+    log.info("Seen-store loaded: %d tracked events", len(store))
+
+    while True:
+        try:
+            start = time.time()
+            log.info("━" * 60)
+            log.info("Starting scout cycle")
+
+            cfg = load_config(CONFIG_PATH)
+            notified = run_cycle(cfg, ranker, notifier, store)
+
+            elapsed = time.time() - start
+            log.info("Cycle complete in %.1fs — notified=%d", elapsed, notified)
+
+            if once:
+                break
+            sleep_time = max(0, POLL_INTERVAL - elapsed)
+            log.info("Next cycle in %.0f seconds", sleep_time)
+            time.sleep(sleep_time)
+
+        except KeyboardInterrupt:
+            log.info("Shutting down")
+            break
+        except Exception as e:
+            log.error("Unexpected error: %s", e, exc_info=True)
+            try:
+                notifier.send(f"⚠️ Event scout error: {e}")
+            except Exception:
+                pass
+            if once:
+                sys.exit(1)
+            time.sleep(60)
+
+
+if __name__ == "__main__":
+    main()
