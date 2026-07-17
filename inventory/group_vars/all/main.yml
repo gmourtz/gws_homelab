@@ -315,7 +315,22 @@ event_scout_agent:
       - { name: "AWS Well-Architected UG",   url: "https://www.meetup.com/aws-london-well-architected-user-group/events/ical/" }
       - { name: "UK Databricks UG",          url: "https://www.meetup.com/databricks-practitioners-uk/events/ical/" }
       - { name: "Claude Code Central London", url: "https://www.meetup.com/claude-code-central-london-meetup-group/events/ical/" }
+      # Groups the user is a member of (slugs verified July 2026)
+      - { name: "Databricks London Meetup",  url: "https://www.meetup.com/databricks-london/events/ical/" }
+      - { name: "London Apache Airflow",     url: "https://www.meetup.com/london-apache-airflow-meetup/events/ical/" }
+      - { name: "Apache Kafka London",       url: "https://www.meetup.com/apache-kafka-london/events/ical/" }
+      - { name: "Data Engineer Things London", url: "https://www.meetup.com/data-engineer-things-london-meetup/events/ical/" }
+      - { name: "Data Engineers London",     url: "https://www.meetup.com/data-engineers-london/events/ical/" }
+      - { name: "London Analytics Engineering", url: "https://www.meetup.com/london-analytics-engineering-meetup/events/ical/" }
+      - { name: "London Analytics Meetup",   url: "https://www.meetup.com/london-analytics-group/events/ical/" }
+      - { name: "London Business Analytics", url: "https://www.meetup.com/london-business-analytics-group/events/ical/" }
+      - { name: "Big Data Demystified",      url: "https://www.meetup.com/big-data-demystified-london/events/ical/" }
+      - { name: "London PyTorch Meetup",     url: "https://www.meetup.com/london-pytorch-meetup/events/ical/" }
+      - { name: "Platform Engineers London", url: "https://www.meetup.com/platform-engineers-london/events/ical/" }
+      - { name: "Cloud Platform Eng London", url: "https://www.meetup.com/cloud-platform-engineering-london/events/ical/" }
+      - { name: "London DevOps",             url: "https://www.meetup.com/london-devops/events/ical/" }
       # Luma calendars (London tech/AI/startup scene)
+      - { name: "London Agentic AI",         url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-h0cZOlkq3AGhPoK" }
       - { name: "Claude Community Events",   url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-TOpA5LAFfuDeFpu" }
       - { name: "Air Street (London AI)",    url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-zUWmkxeBGlQQenp" }
       - { name: "AI Engine",                 url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-a6GjHykuKt5q8iI" }
