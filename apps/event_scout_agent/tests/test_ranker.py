@@ -1,5 +1,6 @@
 """Ranker tests — prompt building and response mapping with a mocked client."""
 
+import logging
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
@@ -50,6 +51,15 @@ def test_out_of_range_event_id_is_dropped():
         [EventRanking(event_id=5, score=9, matched_topics=[], reason="x")]
     )
     assert ranker.rank([_event("a")], ["AI"], "London") == {}
+
+
+def test_warns_when_model_drops_events(caplog):
+    ranker = _ranker_with_parse_result(
+        [EventRanking(event_id=0, score=5, matched_topics=[], reason="x")]
+    )
+    with caplog.at_level(logging.WARNING):
+        ranker.rank([_event("a"), _event("b")], ["AI"], "London")
+    assert "ranked only 1/2" in caplog.text
 
 
 def test_batching_splits_large_input():

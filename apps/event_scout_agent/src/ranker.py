@@ -90,6 +90,12 @@ class EventRanker:
                     )
                 else:
                     log.warning("LLM returned out-of-range event_id %d", ranking.event_id)
+            ranked_ids = {r.event_id for r in rankings if 0 <= r.event_id < len(batch)}
+            if len(ranked_ids) < len(batch):
+                log.warning(
+                    "LLM ranked only %d/%d events in batch — dropped events retry next cycle",
+                    len(ranked_ids), len(batch),
+                )
         return results
 
     def _rank_batch(
