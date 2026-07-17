@@ -14,7 +14,9 @@ from models import Event
 
 log = logging.getLogger(__name__)
 
-BATCH_SIZE = 8  # keeps prompts well within localllm's 16K context
+# small batches: localllm CPU inference measured ~200s per 8-event batch,
+# which brushed the read timeout — 4 events keeps each call comfortably short
+BATCH_SIZE = 4
 
 
 class EventRanking(BaseModel):
@@ -56,7 +58,7 @@ class EventRanker:
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url,
-            timeout=httpx.Timeout(300.0, connect=10.0),
+            timeout=httpx.Timeout(600.0, connect=10.0),
             max_retries=1,
         )
         self.model = model
@@ -76,7 +78,15 @@ class EventRanker:
             rankings = self._rank_batch(batch, topics, location, include_online)
             for ranking in rankings:
                 if 0 <= ranking.event_id < len(batch):
-                    results[batch[ranking.event_id].uid] = ranking
+                    event = batch[ranking.event_id]
+                    results[event.uid] = ranking
+                    log.debug(
+                        "LLM ranking: %d/10 [%s] %s — %s",
+                        ranking.score,
+                        ", ".join(ranking.matched_topics) or "no topic match",
+                        event.title,
+                        ranking.reason,
+                    )
                 else:
                     log.warning("LLM returned out-of-range event_id %d", ranking.event_id)
         return results

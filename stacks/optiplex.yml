@@ -344,6 +344,7 @@ services:
       POLL_INTERVAL: "86400"
       DATA_DIR: "/data"
       CONFIG_PATH: "/data/config.yml"
+      LOG_LEVEL: "INFO"   # DEBUG logs every LLM ranking (score/topics/reason)
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import os, sys; sys.exit(0 if os.path.exists(\"/proc/1/cmdline\") else 1)'"]
       interval: 30s

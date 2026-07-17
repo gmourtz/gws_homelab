@@ -40,6 +40,7 @@ are all free, auth-less, and structured.
 | `POLL_INTERVAL` | `86400` | Seconds between cycles |
 | `DATA_DIR` | `./data` | State directory (volume in production) |
 | `CONFIG_PATH` | `/data/config.yml` | Topics/sources config |
+| `LOG_LEVEL` | `INFO` | `DEBUG` logs every LLM ranking, including rejected events |
 
 Topics, sources, location, and thresholds live in the YAML config — in
 production it is rendered from the `event_scout_agent` var in

@@ -12,10 +12,13 @@ from zoneinfo import ZoneInfo
 import yaml
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+# keep HTTP client noise out of DEBUG — the ranker logs the parsed LLM output
+for _name in ("httpx", "httpcore", "openai"):
+    logging.getLogger(_name).setLevel(logging.INFO)
 log = logging.getLogger(__name__)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
