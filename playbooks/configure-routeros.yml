@@ -388,37 +388,25 @@
           - enabled: false
 
     # -----------------------------------------------------------------------
-    # 18b. SNMP — read-only agent for NetAlertX device discovery
-    #
-    # NetAlertX (on optiplex) reads the router's ARP table via SNMP to inventory
-    # devices across ALL VLANs in one query (the router is the gateway for each,
-    # so it holds every VLAN's IP<->MAC mappings — including Guest, which no host
-    # can reach directly). Read-only v2c; the community is restricted to optiplex's
-    # IP. RouterOS ships a built-in "public" community it refuses to delete, so we
-    # disable it instead of removing it (hence no handle_absent_entries: remove).
-    # The input firewall already permits VLAN 10 -> router on any port (incl.
-    # UDP 161), so no firewall rule is needed.
+    # 18b. SNMP — disabled; its only consumer (NetAlertX) was removed.
+    # RouterOS refuses to delete the built-in "public" community, so both
+    # communities are disabled rather than removed.
     # -----------------------------------------------------------------------
-    - name: Configure SNMP communities (custom read-only for optiplex; disable default public)
+    - name: Disable SNMP communities
       community.routeros.api_modify:
         path: snmp community
         data:
           - name: "{{ vault_routeros_snmp_community }}"
-            addresses: "{{ routeros_snmp_allowed_address }}"
-            read-access: true
-            write-access: false
-            security: none
+            disabled: true
           - name: public
             disabled: true
       no_log: true
 
-    - name: Enable SNMP agent
+    - name: Disable SNMP agent
       community.routeros.api_modify:
         path: snmp
         data:
-          - enabled: true
-            contact: "{{ routeros_snmp_contact }}"
-            location: "{{ routeros_snmp_location }}"
+          - enabled: false
 
     # -----------------------------------------------------------------------
     # 19. WiFi security profiles (RouterOS 7 wifi package)

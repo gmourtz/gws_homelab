@@ -100,7 +100,7 @@
         - { port: "41641", proto: udp }
 
     # UFW governs only the host itself and network_mode:host containers (beszel-agent,
-    # Pi-hole, netalertx). Docker bridge-published ports (e.g. "8080:8080") BYPASS UFW —
+    # Pi-hole). Docker bridge-published ports (e.g. "8080:8080") BYPASS UFW —
     # Docker's iptables rules sit ahead of it in the FORWARD/DOCKER-USER chain, so `src`
     # here does not apply to them. Those are gated by the MikroTik firewall
     # (host_vars/mikrotik.yml). Only add host-networked service ports to ufw_extra_rules.
