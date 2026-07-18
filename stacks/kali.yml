@@ -4,9 +4,13 @@
 # Network exposure is locked down at three layers:
 #   1. MikroTik firewall — VLAN 50 cannot initiate to any internal VLAN
 #      (exception: beszel-agent → optiplex:8090, see mikrotik.yml)
-#   2. UFW on this host — ports open only to trusted sources
-#      (see inventory/host_vars/kali.yml)
-#   3. Container ports bound to all interfaces (host firewall is the gate)
+#   2. Tailscale tag:gws-homelab-kali — destination-only ACL (admin devices only,
+#      no outbound pivot); see the note below
+#   3. lab Compose profile — targets stopped by default (see below)
+#
+# NOTE: juice-shop/webgoat publish bridge ports, which bypass UFW (Docker's rules
+# sit ahead of it). UFW here only guards network_mode:host services (beszel-agent);
+# it does NOT gate the lab targets — the three layers above are the controls.
 #
 # Tailscale exposure is allowed but ADMIN-ONLY: kali carries tag:gws-homelab-kali,
 # which the tailnet ACL lets only your own devices reach (and the tag has no
@@ -44,7 +48,7 @@ services:
     profiles: ["lab"]
     restart: "no"
     environment:
-      # Bind to 0.0.0.0 so the host UFW (not the JVM) controls exposure
+      # Bind to 0.0.0.0 — the network layers above (MikroTik/Tailscale) control exposure, not the JVM
       WEBGOAT_HOST: 0.0.0.0
       WEBWOLF_HOST: 0.0.0.0
       TZ: Europe/London
@@ -87,7 +91,8 @@ services:
     environment:
       DOCKER_HOST: "tcp://docker-socket-proxy:2375"
     ports:
-      - "7007:7007"  # UFW restricts to 192.168.10.20 (optiplex) only
+      # central dozzle on optiplex aggregates kali.internal:7007
+      - "7007:7007"
     healthcheck:
       test: ["CMD", "/dozzle", "healthcheck"]
       interval: 30s

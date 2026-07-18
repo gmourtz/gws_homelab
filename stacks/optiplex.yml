@@ -87,6 +87,7 @@ services:
       - air-quality-net
       - miniflux-net
     ports:
+      # LAN + Tailscale entrypoint; bridge-published so MikroTik gates source, not UFW
       - "80:80"
       - "443:443"
     volumes:

@@ -5,7 +5,8 @@ services:
     container_name: ollama
     restart: unless-stopped
     ports:
-      - "11434:11434"   # OpenAI-compat API; UFW restricts to 192.168.10.0/24
+      # native + OpenAI-compat API — consumed by optiplex (portfolio-agent, paperless-gpt) and openclaw
+      - "11434:11434"
     volumes:
       - ollama-models:/root/.ollama
     environment:
@@ -27,7 +28,8 @@ services:
     container_name: open-webui
     restart: unless-stopped
     ports:
-      - "8080:8080"   # UFW restricts to 192.168.10.20 (Caddy on optiplex)
+      # Caddy on optiplex reverse-proxies this at chat.internal
+      - "8080:8080"
     volumes:
       - open-webui-data:/app/backend/data
     environment:
@@ -57,7 +59,10 @@ services:
       VOLUMES: 1
       INFO: 1
     ports:
-      - "2375:2375"   # UFW restricts to 192.168.10.20 (optiplex dozzle aggregator)
+      # loopback for the on-host beszel-agent; LAN IP for Homepage on optiplex.
+      # Not 0.0.0.0 — that would also expose it on the Tailscale interface.
+      - "127.0.0.1:2375:2375"
+      - "{{ ansible_host }}:2375:2375"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2375/_ping || exit 1"]
       interval: 30s
@@ -72,7 +77,8 @@ services:
     environment:
       DOCKER_HOST: "tcp://docker-socket-proxy:2375"
     ports:
-      - "7007:7007"   # UFW restricts to 192.168.10.20 (optiplex)
+      # central dozzle on optiplex aggregates localllm.internal:7007
+      - "7007:7007"
     healthcheck:
       test: ["CMD", "/dozzle", "healthcheck"]
       interval: 30s
