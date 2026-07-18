@@ -143,13 +143,6 @@
           key: {{ vault_pihole_password }}
           fields: ["queries", "blocked", "blocked_percent", "gravity"]
 
-    - NetAlertX:
-        href: https://netalertx.{{ local_domain }}/
-        icon: netalertx.png
-        description: Network device scanner
-        server: optiplex
-        container: netalertx
-
 - Lab:
     # kali (RPi 5, VLAN 50) — deliberately-vulnerable targets, on-demand.
     # They live behind the `lab` Compose profile, so they're usually stopped;
