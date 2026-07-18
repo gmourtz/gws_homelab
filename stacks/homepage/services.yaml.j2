@@ -125,13 +125,17 @@
         description: Service uptime monitoring
         server: optiplex
         container: uptime-kuma
+        # fleet status summary — create a status page in Kuma, set its slug, then uncomment
+        # widget:
+        #   type: uptimekuma
+        #   url: http://uptime-kuma:3001
+        #   slug: homelab
 
     - Pi-hole:
         href: http://pihole.{{ local_domain }}/admin/
         icon: pi-hole.png
         description: DNS & ad blocking
-        server: rpi3
-        container: pihole
+        siteMonitor: http://pihole.{{ local_domain }}/admin/
         widget:
           type: pihole
           url: http://192.168.10.10
@@ -154,25 +158,25 @@
         href: http://kali.{{ local_domain }}:3000/
         icon: mdi-bottle-soda-classic
         description: OWASP Juice Shop — on-demand (kali)
+        siteMonitor: http://kali.{{ local_domain }}:3000/
     - WebGoat:
         href: http://kali.{{ local_domain }}:8080/WebGoat
         icon: mdi-shield-bug
         description: OWASP WebGoat / WebWolf — on-demand (kali)
+        siteMonitor: http://kali.{{ local_domain }}:8080/WebGoat
 
 - AI:
     - Open WebUI:
         href: https://chat.{{ local_domain }}/
         icon: open-webui.png
         description: Local LLM chat (Gemma 4)
-        server: localllm
-        container: open-webui
+        siteMonitor: http://chat.{{ local_domain }}
 
     - Ollama API:
         href: http://localllm.{{ local_domain }}:11434/
         icon: ollama.png
         description: Local LLM API endpoint
-        server: localllm
-        container: ollama
+        siteMonitor: http://localllm.{{ local_domain }}:11434/api/tags
         widget:
           type: customapi
           url: http://localllm.{{ local_domain }}:11434/api/ps
