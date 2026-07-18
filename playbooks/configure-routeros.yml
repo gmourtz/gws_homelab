@@ -388,9 +388,8 @@
           - enabled: false
 
     # -----------------------------------------------------------------------
-    # 18b. SNMP — disabled; its only consumer (NetAlertX) was removed.
-    # RouterOS refuses to delete the built-in "public" community, so both
-    # communities are disabled rather than removed.
+    # 18b. SNMP — disabled (its only consumer, NetAlertX, was removed). RouterOS
+    # can't delete the built-in "public" community, so both are disabled instead.
     # -----------------------------------------------------------------------
     - name: Disable SNMP communities
       community.routeros.api_modify:

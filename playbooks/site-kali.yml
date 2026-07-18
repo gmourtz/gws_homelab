@@ -122,10 +122,8 @@
         port: "22"
         proto: tcp
 
-    # UFW governs only the host and network_mode:host containers (beszel-agent).
-    # The lab targets (juice-shop/webgoat) publish Docker bridge ports, which bypass
-    # UFW — they're gated by MikroTik VLAN 50 isolation + the destination-only
-    # Tailscale tag (see stacks/kali.yml). Only host-networked ports go in ufw_extra_rules.
+    # UFW governs only the host and network_mode:host containers. Bridge-published
+    # lab ports bypass UFW — gated by MikroTik + the Tailscale ACL (see stacks/kali.yml).
     - name: UFW — allow host-specific ports
       community.general.ufw:
         rule: allow

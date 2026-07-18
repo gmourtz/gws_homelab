@@ -18,8 +18,6 @@ routeros_dns_servers:
   - 9.9.9.9
 routeros_dns_allow_remote_requests: false
 
-# SNMP — disabled in configure-routeros.yml (18b); its only consumer (NetAlertX) was removed.
-
 # ---------------------------------------------------------------------------
 # VLANs
 # ---------------------------------------------------------------------------

@@ -11,9 +11,7 @@ pihole_allowlist:
   - mask-h2.icloud.com    # Apple Private Relay (HTTP/2)
   - mask-api.icloud.com   # Apple Private Relay API — also required for Apple Intelligence
 
-# UFW extra rules — host-networked service ports only (pihole, beszel-agent).
-# Docker bridge-published ports (socket proxy, dozzle) bypass UFW and are gated by
-# MikroTik — see the UFW note in playbooks/site.yml.
+# UFW extra rules — host-networked service ports only; bridge-published ports bypass UFW (see playbooks/site.yml)
 ufw_extra_rules:
   # Pi-hole DNS (trusted + IoT + agent VLANs — allowed through MikroTik firewall)
   - { port: "53", proto: tcp, src: "192.168.10.0/24" }

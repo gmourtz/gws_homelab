@@ -8,9 +8,8 @@
 #      no outbound pivot); see the note below
 #   3. lab Compose profile — targets stopped by default (see below)
 #
-# NOTE: juice-shop/webgoat publish bridge ports, which bypass UFW (Docker's rules
-# sit ahead of it). UFW here only guards network_mode:host services (beszel-agent);
-# it does NOT gate the lab targets — the three layers above are the controls.
+# NOTE: the lab targets publish bridge ports, which bypass UFW — the three layers
+# above are the controls, not the host firewall.
 #
 # Tailscale exposure is allowed but ADMIN-ONLY: kali carries tag:gws-homelab-kali,
 # which the tailnet ACL lets only your own devices reach (and the tag has no

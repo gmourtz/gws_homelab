@@ -2,9 +2,7 @@
 # Host vars for kali — Kali Linux, pentesting lab on VLAN 50.
 # Used by playbooks/site-kali.yml (not site.yml — kali_lab group is excluded).
 
-# UFW extra rules — host-networked service ports only (beszel-agent). The lab
-# targets (juice-shop/webgoat) and dozzle publish bridge ports, which bypass UFW;
-# they're gated by MikroTik + the destination-only Tailscale tag (see stacks/kali.yml).
+# UFW extra rules — host-networked service ports only; bridge-published ports bypass UFW (see playbooks/site-kali.yml)
 ufw_extra_rules:
   # Beszel agent
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }

@@ -46,9 +46,7 @@ extra_packages:
   - intel-opencl-icd  # Intel GPU OpenCL runtime — enables HDR tone-mapping in Jellyfin QSV transcoding
   - mergerfs          # union filesystem — pools the storage_branches drives into /mnt/media
 
-# UFW extra rules — host-networked service ports only (beszel-agent).
-# Docker bridge-published ports (Caddy 80/443) bypass UFW and are gated by
-# MikroTik — see the UFW note in playbooks/site.yml.
+# UFW extra rules — host-networked service ports only; bridge-published ports bypass UFW (see playbooks/site.yml)
 ufw_extra_rules:
   # Beszel agent (LAN + Docker bridge so hub can reach agent on same host)
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }

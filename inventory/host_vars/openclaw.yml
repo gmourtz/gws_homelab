@@ -1,9 +1,7 @@
 ---
 # Host vars for openclaw (VLAN 40 — Agent, isolated from trusted network)
 
-# UFW extra rules — host-networked service ports only (beszel-agent). Docker
-# bridge-published ports (openclaw gateway, dozzle) bypass UFW and are gated by
-# MikroTik — see the UFW note in playbooks/site.yml.
+# UFW extra rules — host-networked service ports only; bridge-published ports bypass UFW (see playbooks/site.yml)
 ufw_extra_rules:
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }   # Beszel agent
 

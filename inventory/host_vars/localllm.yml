@@ -2,9 +2,7 @@
 # Host vars for localllm (VLAN 10 — Trusted, local LLM serving)
 # Hardware: Dell OptiPlex Micro Plus 7010 (i7-13700T, 16GB DDR5, 256GB NVMe)
 
-# UFW extra rules — host-networked service ports only (beszel-agent). Docker
-# bridge-published ports (ollama, open-webui, socket proxy, dozzle) bypass UFW and
-# are gated by MikroTik — see the UFW note in playbooks/site.yml.
+# UFW extra rules — host-networked service ports only; bridge-published ports bypass UFW (see playbooks/site.yml)
 ufw_extra_rules:
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }   # Beszel agent (VLAN-wide, matches rpi3/openclaw pattern)
 
