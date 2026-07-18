@@ -36,7 +36,10 @@ services:
       VOLUMES: 1
       INFO: 1
     ports:
-      - "2375:2375"  # bound to all interfaces — UFW restricts to 192.168.10.20 (optiplex) only
+      # loopback for the on-host beszel-agent; LAN IP for Homepage on optiplex.
+      # Not 0.0.0.0 — that would also expose it on the Tailscale interface.
+      - "127.0.0.1:2375:2375"
+      - "{{ ansible_host }}:2375:2375"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2375/_ping || exit 1"]
       interval: 30s
@@ -51,7 +54,8 @@ services:
     environment:
       DOCKER_HOST: "tcp://docker-socket-proxy:2375"
     ports:
-      - "7007:7007"  # UFW restricts to 192.168.10.20 (optiplex) only
+      # central dozzle on optiplex aggregates rpi3.internal:7007
+      - "7007:7007"
     healthcheck:
       test: ["CMD", "/dozzle", "healthcheck"]
       interval: 30s

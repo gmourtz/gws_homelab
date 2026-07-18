@@ -46,17 +46,13 @@ extra_packages:
   - intel-opencl-icd  # Intel GPU OpenCL runtime — enables HDR tone-mapping in Jellyfin QSV transcoding
   - mergerfs          # union filesystem — pools the storage_branches drives into /mnt/media
 
-# UFW extra rules — ports needed by stacks on this host
+# UFW extra rules — host-networked service ports only (beszel-agent, netalertx).
+# Docker bridge-published ports (Caddy 80/443) bypass UFW and are gated by
+# MikroTik — see the UFW note in playbooks/site.yml.
 ufw_extra_rules:
   # Beszel agent (LAN + Docker bridge so hub can reach agent on same host)
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }
   - { port: "45876", proto: tcp, src: "10.10.0.0/16" }
-  # Caddy reverse proxy (serves beszel, jellyfin, etc.)
-  - { port: "80",  proto: tcp, src: "192.168.10.0/24" }
-  - { port: "80",  proto: tcp, src: "100.64.0.0/10" }  # Tailscale clients
-  # Caddy HTTPS (tls internal self-signed CA — required by Safari for SharedArrayBuffer / secure context)
-  - { port: "443", proto: tcp, src: "192.168.10.0/24" }
-  - { port: "443", proto: tcp, src: "100.64.0.0/10" }  # Tailscale clients
   # NetAlertX web UI — host-networked; reached by Caddy over the docker bridge
   - { port: "20211", proto: tcp, src: "10.10.0.0/16" }
 
