@@ -25,6 +25,9 @@ HEADERS = {
     )
 }
 TIMEOUT = 30
+# cap ingested descriptions — wide enough for full text + speaker lineups,
+# while keeping the batched ranking prompt inside localllm's 16K context
+MAX_DESCRIPTION_CHARS = 4000
 
 _URL_RE = re.compile(r"https?://[^\s<>\"\\]+")
 _LDJSON_RE = re.compile(
@@ -71,7 +74,7 @@ def fetch_ics(name: str, url: str) -> list[Event]:
             Event(
                 uid=uid,
                 title=summary,
-                description=description[:2000],
+                description=description[:MAX_DESCRIPTION_CHARS],
                 start=start,
                 end=_to_utc(component.get("DTEND")),
                 location=str(component.get("LOCATION", "")).strip(),
@@ -135,7 +138,7 @@ def fetch_eventbrite(name: str, search_url: str) -> list[Event]:
                 Event(
                     uid=url,
                     title=item.get("name", "").strip(),
-                    description=str(item.get("description", ""))[:2000],
+                    description=str(item.get("description", ""))[:MAX_DESCRIPTION_CHARS],
                     start=start.astimezone(timezone.utc),
                     end=end.astimezone(timezone.utc) if end else None,
                     location=_jsonld_location(item),
@@ -183,7 +186,7 @@ def enrich_luma_descriptions(events: list[Event], delay: float = 0.3) -> int:
             text = _mirror_text(mirror).strip()
             if text:
                 # keep the stub — its "Hosted by ..." line is signal too
-                event.description = f"{event.description}\n\n{text}"[:2000]
+                event.description = f"{event.description}\n\n{text}"[:MAX_DESCRIPTION_CHARS]
                 enriched += 1
         except Exception as e:
             log.warning("Luma enrichment failed for %s: %s", event.title, e)

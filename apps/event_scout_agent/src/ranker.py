@@ -15,8 +15,9 @@ from models import Event
 log = logging.getLogger(__name__)
 
 # small batches: localllm CPU inference measured ~200s per 8-event batch,
-# which brushed the read timeout — 4 events keeps each call comfortably short
-BATCH_SIZE = 4
+# which brushed the read timeout — 3 events keeps each call short and cuts
+# the 8B model's dropped/duplicated rankings on longer descriptions
+BATCH_SIZE = 3
 
 
 class EventRanking(BaseModel):
@@ -182,5 +183,5 @@ class EventRanker:
             lines.append(f"  Source: {event.source_name}")
             if event.description:
                 # wide enough to include speaker lineups, which sit deep in the text
-                lines.append(f"  Description: {event.description[:800]}")
+                lines.append(f"  Description: {event.description}")
         return "\n".join(lines)
