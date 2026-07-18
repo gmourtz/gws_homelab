@@ -2,14 +2,11 @@
 # Host vars for localllm (VLAN 10 — Trusted, local LLM serving)
 # Hardware: Dell OptiPlex Micro Plus 7010 (i7-13700T, 16GB DDR5, 256GB NVMe)
 
-# UFW extra rules
+# UFW extra rules — host-networked service ports only (beszel-agent). Docker
+# bridge-published ports (ollama, open-webui, socket proxy, dozzle) bypass UFW and
+# are gated by MikroTik — see the UFW note in playbooks/site.yml.
 ufw_extra_rules:
-  - { port: "11434", proto: tcp, src: "192.168.10.0/24" }   # Ollama API (trusted VLAN)
-  - { port: "11434", proto: tcp, src: "192.168.40.30"   }   # Ollama API (openclaw on VLAN 40)
-  - { port: "8080",  proto: tcp, src: "192.168.10.20"   }   # Open WebUI (Caddy on optiplex only)
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }   # Beszel agent (VLAN-wide, matches rpi3/openclaw pattern)
-  - { port: "7007",  proto: tcp, src: "192.168.10.20"   }   # Dozzle agent
-  - { port: "2375",  proto: tcp, src: "192.168.10.20"   }   # Docker socket proxy (dozzle aggregator)
 
 # Ollama models to pull (deploy-stacks.yml ensures these are present)
 ollama_models:

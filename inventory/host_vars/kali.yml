@@ -2,23 +2,12 @@
 # Host vars for kali — Kali Linux, pentesting lab on VLAN 50.
 # Used by playbooks/site-kali.yml (not site.yml — kali_lab group is excluded).
 
+# UFW extra rules — host-networked service ports only (beszel-agent). The lab
+# targets (juice-shop/webgoat) and dozzle publish bridge ports, which bypass UFW;
+# they're gated by MikroTik + the destination-only Tailscale tag (see stacks/kali.yml).
 ufw_extra_rules:
-  # Juice Shop
-  - { port: "3000", proto: tcp, src: "192.168.50.0/24" }
-  - { port: "3000", proto: tcp, src: "192.168.10.0/24" }
-  - { port: "3000", proto: tcp, src: "100.64.0.0/10" }    # Tailscale
-  # WebGoat
-  - { port: "8080", proto: tcp, src: "192.168.50.0/24" }
-  - { port: "8080", proto: tcp, src: "192.168.10.0/24" }
-  - { port: "8080", proto: tcp, src: "100.64.0.0/10" }    # Tailscale
-  # WebWolf
-  - { port: "9090", proto: tcp, src: "192.168.50.0/24" }
-  - { port: "9090", proto: tcp, src: "192.168.10.0/24" }
-  - { port: "9090", proto: tcp, src: "100.64.0.0/10" }    # Tailscale
   # Beszel agent
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }
-  # Dozzle agent
-  - { port: "7007", proto: tcp, src: "192.168.10.20" }
 
 # Tailscale — tag:gws-homelab-kali is destination-only in the ACL (no outbound grants)
 tailscale_enabled: true

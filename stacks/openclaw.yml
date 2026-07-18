@@ -7,6 +7,7 @@ services:
     container_name: openclaw
     restart: unless-stopped
     ports:
+      # LAN gateway UI (also fronted by Tailscale Serve)
       - "18789:18789"
       # gcal OAuth re-auth callback (localhost-only, via SSH tunnel; token expires ~7d in Testing mode). Re-auth:
       #   docker exec -it openclaw env GOOGLE_OAUTH_CREDENTIALS=/home/node/.openclaw/gcal/gcp-oauth.keys.json \
@@ -57,7 +58,8 @@ services:
     environment:
       DOCKER_HOST: "tcp://docker-socket-proxy:2375"
     ports:
-      - "7007:7007"  # UFW restricts to 192.168.10.20 (optiplex) only
+      # central dozzle on optiplex aggregates openclaw.internal:7007
+      - "7007:7007"
     healthcheck:
       test: ["CMD", "/dozzle", "healthcheck"]
       interval: 30s
