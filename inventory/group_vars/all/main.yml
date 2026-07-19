@@ -130,6 +130,9 @@ removed_kuma_monitors:
   # keeping them permanently warm. Removed so they can actually go idle.
   - stirling-pdf
   - drawio
+  # NetAlertX container was dropped (commit 0943849); Kuma's monitor DB is
+  # unmanaged state so the orphaned monitor kept alerting after removal.
+  - netalertx
 
 # Awair Element air-quality sensors — polled by the air-quality-collector
 # container on optiplex (stacks/optiplex.yml templates this list into the
