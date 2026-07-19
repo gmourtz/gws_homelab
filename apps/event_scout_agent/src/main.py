@@ -1,6 +1,7 @@
 """Event scout — fetches event feeds, ranks new events against the user's
-topics via LLM, and Telegrams a digest. Config (topics/sources/thresholds)
-comes from a YAML file templated by Ansible and re-read every cycle."""
+topics via LLM, and Telegrams a digest to each recipient independently. Config
+(topics/sources/thresholds/recipients) comes from a YAML file templated by
+Ansible and re-read every cycle."""
 
 import logging
 import os
@@ -24,25 +25,21 @@ log = logging.getLogger(__name__)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "qwen3:8b")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL") or None
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 RUN_AT_HOUR = os.getenv("RUN_AT_HOUR", "5")  # daily cycle anchor hour in DISPLAY_TZ
 DATA_DIR = os.getenv("DATA_DIR", "")
 CONFIG_PATH = os.getenv("CONFIG_PATH", "/data/config.yml")
 
 DISPLAY_TZ = ZoneInfo("Europe/London")
 
+# Fallback subscriber for local --once dry runs with no Telegram creds: prints
+# the digest and behaves like a fresh backfilling recipient (shows everything).
+CONSOLE_RECIPIENT = {"name": "console", "bot_token": "", "chat_id": "", "backfill": True}
 
-def validate_config(once: bool = False) -> None:
+
+def validate_config() -> None:
     """Exit early if required env vars / config are missing."""
-    required = {"OPENAI_API_KEY": OPENAI_API_KEY}
-    if not once:
-        # --once without Telegram creds falls back to console output
-        required["TELEGRAM_BOT_TOKEN"] = TELEGRAM_BOT_TOKEN
-        required["TELEGRAM_CHAT_ID"] = TELEGRAM_CHAT_ID
-    missing = [k for k, v in required.items() if not v]
-    if missing:
-        log.error("Missing required env vars: %s", ", ".join(missing))
+    if not OPENAI_API_KEY:
+        log.error("Missing required env var: OPENAI_API_KEY")
         sys.exit(1)
     if not os.path.exists(CONFIG_PATH):
         log.error("Config file not found: %s (set CONFIG_PATH)", CONFIG_PATH)
@@ -62,10 +59,32 @@ def load_config(path: str) -> dict:
     cfg.setdefault("notes", "")
     cfg.setdefault("topics", [])
     cfg.setdefault("sources", {})
+    cfg.setdefault("recipients", [])
     if not cfg["topics"] or not cfg["sources"]:
         log.error("Config must define both 'topics' and 'sources'")
         sys.exit(1)
     return cfg
+
+
+def resolve_recipients(cfg: dict) -> list[dict]:
+    """Turn config recipient entries into send-ready recipients, pulling each
+    one's bot token + chat id from the env vars it names. Entries whose creds
+    are unset (e.g. a friend not yet added to the vault) are skipped, so they
+    stay inert until configured."""
+    recipients = []
+    for entry in cfg.get("recipients", []):
+        token = os.environ.get(entry.get("token_env", ""), "")
+        chat = os.environ.get(entry.get("chat_env", ""), "")
+        if token and chat:
+            recipients.append(
+                {
+                    "name": entry["name"],
+                    "bot_token": token,
+                    "chat_id": chat,
+                    "backfill": bool(entry.get("backfill", False)),
+                }
+            )
+    return recipients
 
 
 def seconds_until_hour(hour: int, now: datetime | None = None) -> float:
@@ -78,13 +97,11 @@ def seconds_until_hour(hour: int, now: datetime | None = None) -> float:
     return (target.astimezone(timezone.utc) - now.astimezone(timezone.utc)).total_seconds()
 
 
-def filter_events(events, now, lookahead_days, seen_store):
+def filter_events(events, now, lookahead_days):
+    """Keep future events inside the lookahead window. Per-recipient dedup is
+    applied later — the same event may be pending for different subscribers."""
     horizon = now + timedelta(days=lookahead_days)
-    return [
-        e
-        for e in events
-        if now <= e.start <= horizon and not seen_store.is_seen(e.uid)
-    ]
+    return [e for e in events if now <= e.start <= horizon]
 
 
 def build_digest(selected) -> str:
@@ -100,10 +117,10 @@ def build_digest(selected) -> str:
         lines.append(f"*{event.title}*")
         where = f" · {event.location}" if event.location else ""
         lines.append(f"📆 {when}{where}")
-        topics = ", ".join(ranking.matched_topics) or "general"
-        lines.append(f"⭐ {ranking.score}/10 — {topics}")
-        if ranking.reason:
-            lines.append(f"_{ranking.reason}_")
+        topics = ", ".join(ranking["matched_topics"]) or "general"
+        lines.append(f"⭐ {ranking['score']}/10 — {topics}")
+        if ranking["reason"]:
+            lines.append(f"_{ranking['reason']}_")
         lines.append(f"🔗 {event.url}")
     return "\n".join(lines)
 
@@ -116,90 +133,95 @@ def run_cycle(cfg, ranker, notifier, store) -> int:
     events = fetch_all(cfg["sources"])
     log.info("Fetched %d events across all sources", len(events))
 
-    fresh = filter_events(events, now, cfg["lookahead_days"], store)
-    log.info("%d new events after date/dedup filter", len(fresh))
-    if not fresh:
+    candidates = filter_events(events, now, cfg["lookahead_days"])
+    log.info("%d events within the %d-day window", len(candidates), cfg["lookahead_days"])
+    if not candidates:
         store.prune(now)
         store.save()
         return 0
 
-    # only fresh events — a handful per day after the initial backfill
-    enriched = enrich_luma_descriptions(fresh)
-    if enriched:
-        log.info("Enriched %d Luma events with full descriptions", enriched)
+    # Rank only never-seen events (global rank-once cache); enrich just those.
+    unranked = [e for e in candidates if not store.is_ranked(e.uid)]
+    if unranked:
+        enriched = enrich_luma_descriptions(unranked)
+        if enriched:
+            log.info("Enriched %d Luma events with full descriptions", enriched)
+        new_rankings = ranker.rank(
+            unranked, cfg["topics"], cfg["location"], cfg["include_online"], cfg["notes"]
+        )
+        store.add_rankings(unranked, new_rankings)
+        log.info("Ranked %d/%d new events", len(new_rankings), len(unranked))
 
-    rankings = ranker.rank(
-        fresh, cfg["topics"], cfg["location"], cfg["include_online"], cfg["notes"]
-    )
-    log.info("Ranked %d/%d events", len(rankings), len(fresh))
+    recipients = resolve_recipients(cfg) or [CONSOLE_RECIPIENT]
 
-    selected = sorted(
-        (
-            (e, rankings[e.uid])
-            for e in fresh
-            if e.uid in rankings and rankings[e.uid].score >= cfg["min_score"]
-        ),
-        key=lambda pair: -pair[1].score,
-    )
+    total_sent = 0
+    for recipient in recipients:
+        name = recipient["name"]
+        if not store.knows_recipient(name):
+            store.init_recipient(name, candidates, recipient["backfill"])
+            log.info("Registered recipient %r (backfill=%s)", name, recipient["backfill"])
 
-    sent_ok = True
-    if selected:
-        sent_ok = notifier.send(build_digest(selected))
-        if sent_ok:
-            log.info("Notified %d events (min_score=%d)", len(selected), cfg["min_score"])
+        pending = []
+        for event in candidates:
+            meta = store.ranking(event.uid)
+            if meta and meta["score"] >= cfg["min_score"] and not store.is_delivered(name, event.uid):
+                pending.append((event, meta))
+        pending.sort(key=lambda pair: -pair[1]["score"])
+
+        if not pending:
+            log.info("Nothing new for %r", name)
+            continue
+
+        if notifier.send(recipient, build_digest(pending)):
+            store.mark_delivered(name, [e for e, _ in pending])
+            total_sent += len(pending)
+            log.info("Notified %r of %d events (min_score=%d)", name, len(pending), cfg["min_score"])
         else:
             log.error(
-                "Digest send failed — %d selected events stay un-seen and retry next cycle",
-                len(selected),
+                "Send to %r failed — %d events stay pending, retry next cycle",
+                name, len(pending),
             )
-    else:
-        log.info("No events above min_score=%d — staying quiet", cfg["min_score"])
 
-    # Rejected events are marked seen too (don't re-score daily); events whose
-    # ranking batch failed stay un-seen and retry next cycle. If the digest send
-    # failed, the selected events also stay un-seen so they're re-notified.
-    selected_uids = {e.uid for e, _ in selected}
-    store.mark_seen(
-        [
-            e
-            for e in fresh
-            if e.uid in rankings and (sent_ok or e.uid not in selected_uids)
-        ]
-    )
     store.prune(now)
     store.save()
-    return len(selected) if sent_ok else 0
+    return total_sent
 
 
 def main() -> None:
     once = "--once" in sys.argv
-    validate_config(once)
+    validate_config()
     cfg = load_config(CONFIG_PATH)
+
+    from notifier import ConsoleNotifier, TelegramNotifier
+    from ranker import EventRanker
+    from store import EventStore
+
+    recipients = resolve_recipients(cfg)
     log.info(
         "Event scout starting — %d topics, %d ICS feeds, %d Eventbrite searches, "
-        "location=%s, daily at %02d:00 %s%s",
+        "%d recipient(s), location=%s, daily at %02d:00 %s%s",
         len(cfg["topics"]),
         len(cfg["sources"].get("ics", []) or []),
         len(cfg["sources"].get("eventbrite_searches", []) or []),
+        len(recipients),
         cfg["location"],
         int(RUN_AT_HOUR),
         DISPLAY_TZ.key,
         " (single cycle)" if once else "",
     )
 
-    from notifier import ConsoleNotifier, TelegramNotifier
-    from ranker import EventRanker
-    from store import SeenStore
-
-    if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
-        notifier = TelegramNotifier(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
-    else:
-        log.warning("Telegram not configured — printing digests to stdout")
+    if recipients:
+        notifier = TelegramNotifier()
+    elif once:
+        log.warning("No Telegram recipients configured — printing digests to stdout")
         notifier = ConsoleNotifier()
+    else:
+        log.error("No Telegram recipients resolved — set recipient creds and restart")
+        sys.exit(1)
 
     ranker = EventRanker(OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL)
-    store = SeenStore(DATA_DIR or None)
-    log.info("Seen-store loaded: %d tracked events", len(store))
+    store = EventStore(DATA_DIR or None)
+    log.info("Store loaded: %d ranked events tracked", len(store))
 
     while True:
         try:
@@ -227,8 +249,11 @@ def main() -> None:
             break
         except Exception as e:
             log.error("Unexpected error: %s", e, exc_info=True)
+            # best-effort crash alert to the owner only (first resolved recipient)
             try:
-                notifier.send(f"⚠️ Event scout error: {e}")
+                alert = resolve_recipients(cfg)
+                if alert:
+                    notifier.send(alert[0], f"⚠️ Event scout error: {e}")
             except Exception:
                 pass
             if once:

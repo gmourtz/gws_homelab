@@ -1,4 +1,5 @@
-"""Telegram notification sender."""
+"""Telegram notification sender. Each recipient carries its own bot token and
+chat id, so subscribers on different bots are notified independently."""
 
 import logging
 
@@ -8,28 +9,21 @@ log = logging.getLogger(__name__)
 
 
 class TelegramNotifier:
-    """Send messages to a Telegram chat via Bot API."""
-
-    def __init__(self, bot_token: str, chat_id: str):
-        self.bot_token = bot_token
-        self.chat_id = chat_id
-        self.base_url = f"https://api.telegram.org/bot{bot_token}"
-
-    def send(self, text: str) -> bool:
-        """Send a message, splitting into chunks if it exceeds Telegram's limit."""
-        chunks = self._split(text, 4000)
+    def send(self, recipient: dict, text: str) -> bool:
+        """Send to one recipient's chat, splitting to stay under Telegram's limit."""
         ok = True
-        for chunk in chunks:
-            if not self._send_chunk(chunk):
+        for chunk in self._split(text, 4000):
+            if not self._send_chunk(recipient["bot_token"], recipient["chat_id"], chunk):
                 ok = False
         return ok
 
-    def _send_chunk(self, text: str) -> bool:
+    def _send_chunk(self, bot_token: str, chat_id: str, text: str) -> bool:
+        base_url = f"https://api.telegram.org/bot{bot_token}"
         try:
             resp = requests.post(
-                f"{self.base_url}/sendMessage",
+                f"{base_url}/sendMessage",
                 json={
-                    "chat_id": self.chat_id,
+                    "chat_id": chat_id,
                     "text": text,
                     "parse_mode": "Markdown",
                     "disable_web_page_preview": True,
@@ -40,12 +34,8 @@ class TelegramNotifier:
                 # Retry without Markdown if parsing fails
                 log.warning("Markdown send failed, retrying as plain text")
                 resp = requests.post(
-                    f"{self.base_url}/sendMessage",
-                    json={
-                        "chat_id": self.chat_id,
-                        "text": text,
-                        "disable_web_page_preview": True,
-                    },
+                    f"{base_url}/sendMessage",
+                    json={"chat_id": chat_id, "text": text, "disable_web_page_preview": True},
                     timeout=30,
                 )
                 if not resp.ok:
@@ -79,6 +69,7 @@ class ConsoleNotifier:
     """Prints instead of sending — used for local dry runs (--once without
     Telegram credentials)."""
 
-    def send(self, text: str) -> bool:
-        print("\n" + "=" * 60 + "\n" + text + "\n" + "=" * 60)
+    def send(self, recipient: dict, text: str) -> bool:
+        header = f" [{recipient['name']}]" if recipient.get("name") else ""
+        print("\n" + "=" * 60 + header + "\n" + text + "\n" + "=" * 60)
         return True

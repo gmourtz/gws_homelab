@@ -280,6 +280,16 @@ event_scout_agent:
   lookahead_days: 45
   min_score: 6          # 0-10; only events scoring >= this are notified
   include_online: false
+  # Notification recipients — each gets their own independent Telegram digest.
+  # Creds come from the named env vars (wired from the vault in stacks/optiplex.yml);
+  # a recipient whose env vars are unset stays inert. backfill=true gets the current
+  # catalogue on first run; backfill=false (a new joiner) only gets events discovered
+  # after they were added — no initial load. Add a person: append an entry here + wire
+  # its two env vars from the vault in the compose file.
+  recipients:
+    - { name: "georgios", token_env: "TELEGRAM_BOT_TOKEN",        chat_env: "TELEGRAM_CHAT_ID",        backfill: true }
+    # Sultan on his own bot (gws_events_scout_sultan_bot) — gets the current catalogue on first run
+    - { name: "sultan",   token_env: "SULTAN_TELEGRAM_BOT_TOKEN", chat_env: "SULTAN_TELEGRAM_CHAT_ID", backfill: true }
   topics:
     - data engineering
     - AI / LLMs / agents — especially agent harnesses, agentic development, and agent engineering

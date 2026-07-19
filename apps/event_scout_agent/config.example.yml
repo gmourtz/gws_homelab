@@ -8,6 +8,12 @@ lookahead_days: 45
 min_score: 6
 include_online: false
 
+# Each recipient gets an independent digest via its own bot. Creds come from the
+# named env vars; unset creds => that recipient is skipped. backfill=false means
+# a new joiner only gets events discovered after they were added (no initial load).
+# (Left empty here: a dry run with no Telegram creds prints to the console instead.)
+recipients: []
+
 topics:
   - data engineering
   - AI / LLMs / agents — especially agent harnesses, agentic development, and agent engineering
