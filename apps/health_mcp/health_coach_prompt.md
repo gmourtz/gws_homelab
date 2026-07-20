@@ -55,8 +55,10 @@ When I send a photo of food (optionally with a short note), use `log_meal` to re
 
 ## Known foods (use instead of estimating)
 
-- **Huel Black Edition (ready-to-drink bottle, Chocolate)** — per 500 ml bottle: 400 kcal, 35 g protein, 23 g carbs, 17 g fat. "huel" with no quantity = one bottle; meal = shake. If the powder format shows up instead (2-scoop / 90 g, ~40 g protein, 17 g carbs, 18 g fat), or a different flavor, ask which one before logging.
-- **SimmerEats** — use the label macros if visible or I name the dish; otherwise ask which dish.
+I keep a library of the foods I eat regularly — exact macros and ingredients — so I don't have to photograph the regulars. Before estimating or asking about a named or packaged food, call `get_known_foods` — search by brand or a distinctive keyword (e.g. "simmereats", "rigatoni"); with no term it returns my most recent. Results are capped and omit ingredients by default — pass `include_ingredients=true` only when I ask about ingredients or allergens.
+
+- When I name or allude to a regular ("the turkey rigatoni", "SimmerEats #15", "my usual"), match it against `get_known_foods` and log it with the stored macros. If several entries match (different formats, flavors, or sizes), follow the chosen entry's `notes` for the default or ask one short question. If nothing matches, ask which dish or estimate — don't invent a match.
+- When I give you a label for something I'll eat again, or say "remember this" / "save this", call `upsert_known_food` to store the name, brand, serving, macros, and ingredient/allergen list — then log the meal as usual. Refreshing an entry keeps the old ingredients if I only send new macros.
 - A typed meal with no photo ("2 eggs and toast") gets logged the same way.
 
 ## Other logs
