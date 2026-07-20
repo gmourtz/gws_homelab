@@ -1,0 +1,96 @@
+---
+# Refresh the Health MCP SQLite database from an Apple Health export.
+#
+# ingest.py runs on the CONTROL NODE (where the multi-GB export lives and RAM
+# is plentiful), against a copy of the LIVE database. ingest.py only rewrites
+# the managed Apple-Health tables, so manually logged tables (meals,
+# supplements, blood_tests, alcohol_caffeine) are preserved across a sync.
+#
+# The container is stopped for the swap so the SQLite file is read and replaced
+# at rest — no open handles, no WAL races. A few seconds of MCP downtime is
+# fine for a single-user homelab. Only ~3 MB moves each way; the big export
+# never leaves the control node.
+#
+# Requires the stack to be deployed first (the volume + DB are created by the
+# health-mcp container on first start). On a brand-new volume with no DB yet,
+# ingest.py creates a fresh one (manual tables simply start empty).
+#
+# Usage:
+#   make health-sync
+#   ansible-playbook playbooks/sync-health-db.yml -e export_path=/path/to/export.xml
+
+- name: Sync Health MCP database
+  hosts: optiplex
+  become: true
+  gather_facts: false
+
+  vars:
+    app_dir: "{{ playbook_dir }}/../apps/health_mcp"
+    export_path: "{{ playbook_dir }}/../apps/health_mcp/apple_health_export/export.xml"
+    volume_data: /var/lib/docker/volumes/stacks_health-data/_data
+    local_db: /tmp/health-sync.db
+
+  tasks:
+    - name: Check the export exists on the control node
+      ansible.builtin.stat:
+        path: "{{ export_path }}"
+      delegate_to: localhost
+      become: false
+      register: export_stat
+
+    - name: Fail early if the export is missing
+      ansible.builtin.fail:
+        msg: "Export not found: {{ export_path }} — set -e export_path=/path/to/export.xml"
+      when: not export_stat.stat.exists
+
+    - name: Stop health-mcp for a consistent snapshot
+      ansible.builtin.command: docker stop health-mcp
+      changed_when: true
+      failed_when: false  # not fatal if the container isn't running yet
+
+    - name: Check for an existing live DB in the volume
+      ansible.builtin.stat:
+        path: "{{ volume_data }}/health.db"
+      register: remote_db
+
+    - name: Pull the live DB to the control node (keeps manual tables)
+      ansible.builtin.fetch:
+        src: "{{ volume_data }}/health.db"
+        dest: "{{ local_db }}"
+        flat: true
+      when: remote_db.stat.exists
+
+    - name: Ingest the export (rewrites managed tables, preserves manual)
+      ansible.builtin.command:
+        cmd: "{{ app_dir }}/.venv/bin/python {{ app_dir }}/src/ingest.py {{ export_path }} --db {{ local_db }}"
+      delegate_to: localhost
+      become: false
+      changed_when: true
+
+    - name: Push the refreshed DB back into the volume
+      ansible.builtin.copy:
+        src: "{{ local_db }}"
+        dest: "{{ volume_data }}/health.db"
+        owner: "1000"   # image's appuser — reads and writes the DB
+        group: "1000"
+        mode: "0644"
+
+    - name: Remove stale WAL/SHM sidecars from the old DB
+      ansible.builtin.file:
+        path: "{{ volume_data }}/health.db{{ item }}"
+        state: absent
+      loop:
+        - "-wal"
+        - "-shm"
+
+    - name: Start health-mcp
+      ansible.builtin.command: docker start health-mcp
+      changed_when: true
+      failed_when: false  # not fatal if the stack isn't deployed yet
+
+    - name: Clean up the control-node temp DB
+      ansible.builtin.file:
+        path: "{{ local_db }}"
+        state: absent
+      delegate_to: localhost
+      become: false

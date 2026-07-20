@@ -51,6 +51,8 @@ ufw_extra_rules:
   # Beszel agent (LAN + Docker bridge so hub can reach agent on same host)
   - { port: "45876", proto: tcp, src: "192.168.10.0/24" }
   - { port: "45876", proto: tcp, src: "10.10.0.0/16" }
+  # Health MCP (openclaw agent on VLAN 40 → optiplex)
+  - { port: "8100", proto: tcp, src: "192.168.40.30" }
 
 # Tailscale — advertise all homelab subnets so remote clients can reach every VLAN
 tailscale_advertise_routes:

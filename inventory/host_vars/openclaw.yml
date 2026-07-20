@@ -15,3 +15,6 @@ tailscale_ssh: true
 
 # Google Calendar MCP sidecar — enables the MCP server block in openclaw.json
 openclaw_gcal_mcp_enabled: true
+
+# openclaw_health_mcp_enabled lives in group_vars/all/main.yml — it must gate both
+# this host's agent config and the health-mcp container on optiplex.

@@ -27,6 +27,12 @@ ghcr_registry: ghcr.io
 # Stacks deployment
 stacks_dest: /opt/stacks
 
+# Health MCP (apps/health_mcp) — gates BOTH the health-mcp container on optiplex
+# (stacks/optiplex.yml) AND the health-coach agent + MCP registration in openclaw's
+# config (stacks/openclaw.json.j2). Must be global: a host-scoped value only reaches
+# one of the two stacks, leaving the agent pointed at a server that never deploys.
+openclaw_health_mcp_enabled: true
+
 # Local domain suffix — used by Pi-hole (FTLCONF_dns_hosts), /etc/hosts, and DHCP search domain
 local_domain: internal
 

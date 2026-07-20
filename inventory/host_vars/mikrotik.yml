@@ -275,6 +275,16 @@ firewall_filter_rules:
     dst-port: "8090"
     in-interface: bridge1.40
 
+  # Agent -> Health MCP on optiplex (health-coach agent reads/writes health data)
+  - chain: forward
+    action: accept
+    comment: "agent -> health-mcp on optiplex"
+    src-address: 192.168.40.30
+    dst-address: 192.168.10.20
+    protocol: tcp
+    dst-port: "8100"
+    in-interface: bridge1.40
+
   # Agent -> internet HTTP/HTTPS
   - chain: forward
     action: accept

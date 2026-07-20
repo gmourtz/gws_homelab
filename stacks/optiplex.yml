@@ -323,6 +323,33 @@ services:
       retries: 3
 {% endif %}
 
+{% if openclaw_health_mcp_enabled | default(false) %}
+  # --- Health MCP ---
+  # Typed MCP server for the OpenClaw health-coach agent. Exposes tools to log
+  # meals/supplements/blood tests and read Apple Health metrics from SQLite.
+  # DB is populated by periodic `make health-sync` (runs ingest.py against an
+  # Apple Health export). openclaw reaches this via scoped firewall rule.
+  health-mcp:
+    image: ghcr.io/gmourtz/health_mcp:latest
+    container_name: health-mcp
+    restart: unless-stopped
+    mem_limit: 256m
+    ports:
+      - "8100:8100"
+    networks:
+      - health-mcp-net
+    volumes:
+      - health-data:/data
+    environment:
+      PORT: "8100"
+      HEALTH_DB_PATH: "/data/health.db"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8100/mcp')\" || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+{% endif %}
+
   # --- Air quality monitoring ---
   # Collector polls the Awair Element sensors and writes the SQLite DB.
   air-quality-collector:
@@ -1207,6 +1234,10 @@ networks:
   event-scout-agent-net:
     driver: bridge
 {% endif %}
+{% if openclaw_health_mcp_enabled | default(false) %}
+  health-mcp-net:
+    driver: bridge
+{% endif %}
 
 volumes:
   caddy-data:
@@ -1252,5 +1283,8 @@ volumes:
   miniflux-postgres-data:
 {% if vault_event_scout_telegram_bot_token is defined and vault_event_scout_telegram_chat_id is defined %}
   event-scout-agent-data:
+{% endif %}
+{% if openclaw_health_mcp_enabled | default(false) %}
+  health-data:
 {% endif %}
 
