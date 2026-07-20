@@ -13,6 +13,8 @@ from datetime import date, datetime
 from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
 
 from db import get_connection, init_db
 
@@ -26,6 +28,12 @@ mcp = FastMCP(
     host="0.0.0.0",
     port=PORT,
 )
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request) -> PlainTextResponse:
+    """Container liveness probe — plain 200, avoids the MCP transport's 406-on-GET."""
+    return PlainTextResponse("ok")
 
 
 # ── Write tools (manual tables) ──────────────────────────────────────────────

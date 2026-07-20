@@ -22,6 +22,6 @@ ENV HEALTH_DB_PATH=/data/health.db
 EXPOSE 8100
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8100/mcp')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')" || exit 1
 
 CMD ["python", "src/server.py"]
