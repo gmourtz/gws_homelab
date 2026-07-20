@@ -10,7 +10,8 @@ pre-defined to prevent injection.
 
 import os
 import re
-from datetime import date, datetime
+from contextlib import closing
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
@@ -31,6 +32,20 @@ mcp = FastMCP(
 )
 
 
+# ── DB helpers ────────────────────────────────────────────────────────────────
+
+def _cutoff(days: int) -> str:
+    """ISO date `days` days before today, for range-filtered reads."""
+    return (datetime.now().date() - timedelta(days=days)).isoformat()
+
+
+def _query(sql: str, params: tuple = ()) -> list[dict]:
+    """Run a read query and return rows as dicts. Connection is always closed."""
+    with closing(get_connection()) as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [dict(row) for row in rows]
+
+
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request: Request) -> PlainTextResponse:
     """Container liveness probe — plain 200, avoids the MCP transport's 406-on-GET."""
@@ -45,10 +60,10 @@ def log_meal(
     time: str,
     meal: str,
     description: str,
-    calories_kcal: int,
-    protein_g: int,
-    carbs_g: int,
-    fat_g: int,
+    calories_kcal: float,
+    protein_g: float,
+    carbs_g: float,
+    fat_g: float,
     notes: Optional[str] = None,
 ) -> str:
     """Log a meal entry. Call after identifying food from a photo or text description.
@@ -58,24 +73,23 @@ def log_meal(
         time: Time in HH:MM 24h format
         meal: One of: breakfast, lunch, dinner, snack, shake
         description: Short ingredient-level description
-        calories_kcal: Estimated calories (integer)
-        protein_g: Protein in grams (integer)
-        carbs_g: Carbs in grams (integer)
-        fat_g: Fat in grams (integer)
+        calories_kcal: Estimated calories
+        protein_g: Protein in grams
+        carbs_g: Carbs in grams
+        fat_g: Fat in grams
         notes: Assumptions, confidence, portion notes
     """
     valid_meals = {"breakfast", "lunch", "dinner", "snack", "shake"}
     if meal not in valid_meals:
         return f"Error: meal must be one of {valid_meals}, got '{meal}'"
 
-    conn = get_connection()
-    conn.execute(
-        "INSERT INTO meals (date, time, meal, description, calories_kcal, protein_g, carbs_g, fat_g, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (date, time, meal, description, calories_kcal, protein_g, carbs_g, fat_g, notes),
-    )
-    conn.commit()
-    conn.close()
-    return f"Logged {meal}: {description} ({calories_kcal} kcal, {protein_g}g protein)"
+    with closing(get_connection()) as conn:
+        conn.execute(
+            "INSERT INTO meals (date, time, meal, description, calories_kcal, protein_g, carbs_g, fat_g, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (date, time, meal, description, calories_kcal, protein_g, carbs_g, fat_g, notes),
+        )
+        conn.commit()
+    return f"Logged {meal}: {description} ({calories_kcal:g} kcal, {protein_g:g}g protein)"
 
 
 @mcp.tool()
@@ -93,31 +107,29 @@ def log_alcohol_caffeine(
         caffeine_servings: Number of caffeine servings (coffees, energy drinks)
         notes: Additional context
     """
-    conn = get_connection()
-    # Upsert: add to existing counts if row exists for today
-    existing = conn.execute(
-        "SELECT alcohol_drinks, caffeine_servings FROM alcohol_caffeine WHERE date = ?",
-        (date,),
-    ).fetchone()
+    with closing(get_connection()) as conn:
+        # Upsert: add to existing counts if row exists for today
+        existing = conn.execute(
+            "SELECT alcohol_drinks, caffeine_servings FROM alcohol_caffeine WHERE date = ?",
+            (date,),
+        ).fetchone()
 
-    if existing:
-        new_alcohol = (existing["alcohol_drinks"] or 0) + (alcohol_drinks or 0)
-        new_caffeine = (existing["caffeine_servings"] or 0) + (caffeine_servings or 0)
-        conn.execute(
-            "UPDATE alcohol_caffeine SET alcohol_drinks = ?, caffeine_servings = ?, notes = ? WHERE date = ?",
-            (new_alcohol, new_caffeine, notes, date),
-        )
-        conn.commit()
-        conn.close()
-        return f"Updated {date}: {new_alcohol} drinks, {new_caffeine} caffeine"
-    else:
-        conn.execute(
-            "INSERT INTO alcohol_caffeine (date, alcohol_drinks, caffeine_servings, notes) VALUES (?, ?, ?, ?)",
-            (date, alcohol_drinks, caffeine_servings, notes),
-        )
-        conn.commit()
-        conn.close()
-        return f"Logged {date}: {alcohol_drinks or 0} drinks, {caffeine_servings or 0} caffeine"
+        if existing:
+            new_alcohol = (existing["alcohol_drinks"] or 0) + (alcohol_drinks or 0)
+            new_caffeine = (existing["caffeine_servings"] or 0) + (caffeine_servings or 0)
+            conn.execute(
+                "UPDATE alcohol_caffeine SET alcohol_drinks = ?, caffeine_servings = ?, notes = ? WHERE date = ?",
+                (new_alcohol, new_caffeine, notes, date),
+            )
+            conn.commit()
+            return f"Updated {date}: {new_alcohol} drinks, {new_caffeine} caffeine"
+        else:
+            conn.execute(
+                "INSERT INTO alcohol_caffeine (date, alcohol_drinks, caffeine_servings, notes) VALUES (?, ?, ?, ?)",
+                (date, alcohol_drinks, caffeine_servings, notes),
+            )
+            conn.commit()
+            return f"Logged {date}: {alcohol_drinks or 0} drinks, {caffeine_servings or 0} caffeine"
 
 
 @mcp.tool()
@@ -139,13 +151,12 @@ def log_blood_test(
         ref_range: Reference range from the lab (e.g. "50-175 nmol/L")
         notes: Additional context
     """
-    conn = get_connection()
-    conn.execute(
-        "INSERT INTO blood_tests (date, marker, value, unit, ref_range, notes) VALUES (?, ?, ?, ?, ?, ?)",
-        (date, marker, value, unit, ref_range, notes),
-    )
-    conn.commit()
-    conn.close()
+    with closing(get_connection()) as conn:
+        conn.execute(
+            "INSERT INTO blood_tests (date, marker, value, unit, ref_range, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (date, marker, value, unit, ref_range, notes),
+        )
+        conn.commit()
     return f"Logged blood test: {marker} = {value} {unit} ({date})"
 
 
@@ -170,50 +181,47 @@ def upsert_supplement(
         stopped: Stop date YYYY-MM-DD (set to mark as discontinued)
         notes: Additional context
     """
-    conn = get_connection()
-    # Check if supplement exists and is active (no stopped date)
-    existing = conn.execute(
-        "SELECT id FROM supplements WHERE supplement = ? AND stopped IS NULL",
-        (supplement,),
-    ).fetchone()
+    with closing(get_connection()) as conn:
+        # Check if supplement exists and is active (no stopped date)
+        existing = conn.execute(
+            "SELECT id FROM supplements WHERE supplement = ? AND stopped IS NULL",
+            (supplement,),
+        ).fetchone()
 
-    if existing:
-        # Update existing active supplement
-        updates = []
-        params = []
-        if dose is not None:
-            updates.append("dose = ?")
-            params.append(dose)
-        if timing is not None:
-            updates.append("timing = ?")
-            params.append(timing)
-        if frequency is not None:
-            updates.append("frequency = ?")
-            params.append(frequency)
-        if stopped is not None:
-            updates.append("stopped = ?")
-            params.append(stopped)
-        if notes is not None:
-            updates.append("notes = ?")
-            params.append(notes)
+        if existing:
+            # Update existing active supplement
+            updates = []
+            params = []
+            if dose is not None:
+                updates.append("dose = ?")
+                params.append(dose)
+            if timing is not None:
+                updates.append("timing = ?")
+                params.append(timing)
+            if frequency is not None:
+                updates.append("frequency = ?")
+                params.append(frequency)
+            if stopped is not None:
+                updates.append("stopped = ?")
+                params.append(stopped)
+            if notes is not None:
+                updates.append("notes = ?")
+                params.append(notes)
 
-        if updates:
-            params.append(existing["id"])
-            conn.execute(f"UPDATE supplements SET {', '.join(updates)} WHERE id = ?", params)
+            if updates:
+                params.append(existing["id"])
+                conn.execute(f"UPDATE supplements SET {', '.join(updates)} WHERE id = ?", params)
+                conn.commit()
+                action = "Stopped" if stopped else "Updated"
+                return f"{action} supplement: {supplement}"
+            return f"No changes to supplement: {supplement}"
+        else:
+            conn.execute(
+                "INSERT INTO supplements (supplement, dose, timing, frequency, started, stopped, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (supplement, dose, timing, frequency, started, stopped, notes),
+            )
             conn.commit()
-            conn.close()
-            action = "Stopped" if stopped else "Updated"
-            return f"{action} supplement: {supplement}"
-        conn.close()
-        return f"No changes to supplement: {supplement}"
-    else:
-        conn.execute(
-            "INSERT INTO supplements (supplement, dose, timing, frequency, started, stopped, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (supplement, dose, timing, frequency, started, stopped, notes),
-        )
-        conn.commit()
-        conn.close()
-        return f"Added supplement: {supplement} ({dose}, {timing})"
+            return f"Added supplement: {supplement} ({dose}, {timing})"
 
 
 @mcp.tool()
@@ -246,35 +254,33 @@ def upsert_known_food(
         notes: Disambiguation hints, MyFitnessPal search term, storage, etc.
     """
     today = date.today().isoformat()
-    conn = get_connection()
-    existing = conn.execute(
-        "SELECT * FROM known_foods WHERE name = ? COLLATE NOCASE",
-        (name,),
-    ).fetchone()
+    with closing(get_connection()) as conn:
+        existing = conn.execute(
+            "SELECT * FROM known_foods WHERE name = ? COLLATE NOCASE",
+            (name,),
+        ).fetchone()
 
-    if existing:
-        # Preserve existing optional fields when the caller omits them.
-        brand = brand if brand is not None else existing["brand"]
-        serving = serving if serving is not None else existing["serving"]
-        ingredients = ingredients if ingredients is not None else existing["ingredients"]
-        notes = notes if notes is not None else existing["notes"]
-        conn.execute(
-            "UPDATE known_foods SET brand = ?, serving = ?, calories_kcal = ?, protein_g = ?, "
-            "carbs_g = ?, fat_g = ?, ingredients = ?, notes = ?, updated = ? WHERE id = ?",
-            (brand, serving, calories_kcal, protein_g, carbs_g, fat_g, ingredients, notes, today, existing["id"]),
-        )
-        conn.commit()
-        conn.close()
-        return f"Updated known food: {name} ({calories_kcal:g} kcal, {protein_g:g}g protein)"
-    else:
-        conn.execute(
-            "INSERT INTO known_foods (name, brand, serving, calories_kcal, protein_g, carbs_g, fat_g, ingredients, notes, updated) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (name, brand, serving, calories_kcal, protein_g, carbs_g, fat_g, ingredients, notes, today),
-        )
-        conn.commit()
-        conn.close()
-        return f"Saved known food: {name} ({calories_kcal:g} kcal, {protein_g:g}g protein)"
+        if existing:
+            # Preserve existing optional fields when the caller omits them.
+            brand = brand if brand is not None else existing["brand"]
+            serving = serving if serving is not None else existing["serving"]
+            ingredients = ingredients if ingredients is not None else existing["ingredients"]
+            notes = notes if notes is not None else existing["notes"]
+            conn.execute(
+                "UPDATE known_foods SET brand = ?, serving = ?, calories_kcal = ?, protein_g = ?, "
+                "carbs_g = ?, fat_g = ?, ingredients = ?, notes = ?, updated = ? WHERE id = ?",
+                (brand, serving, calories_kcal, protein_g, carbs_g, fat_g, ingredients, notes, today, existing["id"]),
+            )
+            conn.commit()
+            return f"Updated known food: {name} ({calories_kcal:g} kcal, {protein_g:g}g protein)"
+        else:
+            conn.execute(
+                "INSERT INTO known_foods (name, brand, serving, calories_kcal, protein_g, carbs_g, fat_g, ingredients, notes, updated) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (name, brand, serving, calories_kcal, protein_g, carbs_g, fat_g, ingredients, notes, today),
+            )
+            conn.commit()
+            return f"Saved known food: {name} ({calories_kcal:g} kcal, {protein_g:g}g protein)"
 
 
 # ── Read tools ────────────────────────────────────────────────────────────────
@@ -287,22 +293,16 @@ def get_daily_summary(days: int = 14) -> list[dict]:
         days: Number of days to return (default 14, max 120)
     """
     days = min(days, 120)
-    conn = get_connection()
-    rows = conn.execute(
+    return _query(
         "SELECT * FROM daily_summary ORDER BY date DESC LIMIT ?",
         (days,),
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    )
 
 
 @mcp.tool()
 def get_training_zones() -> list[dict]:
     """Get current training zones (HR zones + pace zones + metadata). Always read fresh."""
-    conn = get_connection()
-    rows = conn.execute("SELECT * FROM training_zones").fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    return _query("SELECT * FROM training_zones")
 
 
 @mcp.tool()
@@ -313,20 +313,16 @@ def get_recent_workouts(days: int = 14, workout_type: Optional[str] = None) -> l
         days: Look back this many days (default 14)
         workout_type: Filter by type (e.g. "Running", "HighIntensityIntervalTraining"). None = all types.
     """
-    conn = get_connection()
-    cutoff = (datetime.now().date() - __import__("datetime").timedelta(days=days)).isoformat()
+    cutoff = _cutoff(days)
     if workout_type:
-        rows = conn.execute(
+        return _query(
             "SELECT * FROM workouts WHERE start >= ? AND type = ? ORDER BY start DESC",
             (cutoff, workout_type),
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT * FROM workouts WHERE start >= ? ORDER BY start DESC",
-            (cutoff,),
-        ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+        )
+    return _query(
+        "SELECT * FROM workouts WHERE start >= ? ORDER BY start DESC",
+        (cutoff,),
+    )
 
 
 @mcp.tool()
@@ -336,13 +332,10 @@ def get_sleep(days: int = 14) -> list[dict]:
     Args:
         days: Number of nights to return (default 14)
     """
-    conn = get_connection()
-    rows = conn.execute(
+    return _query(
         "SELECT * FROM sleep ORDER BY date DESC LIMIT ?",
         (days,),
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    )
 
 
 @mcp.tool()
@@ -352,14 +345,10 @@ def get_meals(days: int = 7) -> list[dict]:
     Args:
         days: Number of days to look back (default 7)
     """
-    conn = get_connection()
-    cutoff = (datetime.now().date() - __import__("datetime").timedelta(days=days)).isoformat()
-    rows = conn.execute(
+    return _query(
         "SELECT * FROM meals WHERE date >= ? ORDER BY date DESC, time DESC",
-        (cutoff,),
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+        (_cutoff(days),),
+    )
 
 
 @mcp.tool()
@@ -382,29 +371,28 @@ def get_known_foods(
             ingredients actually matter (e.g. "does my usual have dairy?").
     """
     limit = max(1, min(limit, 100))
-    conn = get_connection()
-    if query:
-        tokens = re.findall(r"\w+", query.lower())
-        if tokens:
-            # Ranked full-text search (FTS5). Each token is a prefix term, OR-combined so a
-            # conversational phrase still matches; bm25 weights name/brand above ingredients.
-            match_expr = " OR ".join(f'"{t}"*' for t in tokens)
-            rows = conn.execute(
-                "SELECT kf.* FROM known_foods_fts "
-                "JOIN known_foods AS kf ON kf.id = known_foods_fts.rowid "
-                "WHERE known_foods_fts MATCH ? "
-                "ORDER BY bm25(known_foods_fts, 10.0, 5.0, 1.0), kf.updated DESC "
-                "LIMIT ?",
-                (match_expr, limit),
-            ).fetchall()
+    with closing(get_connection()) as conn:
+        if query:
+            tokens = re.findall(r"\w+", query.lower())
+            if tokens:
+                # Ranked full-text search (FTS5). Each token is a prefix term, OR-combined so a
+                # conversational phrase still matches; bm25 weights name/brand above ingredients.
+                match_expr = " OR ".join(f'"{t}"*' for t in tokens)
+                rows = conn.execute(
+                    "SELECT kf.* FROM known_foods_fts "
+                    "JOIN known_foods AS kf ON kf.id = known_foods_fts.rowid "
+                    "WHERE known_foods_fts MATCH ? "
+                    "ORDER BY bm25(known_foods_fts, 10.0, 5.0, 1.0), kf.updated DESC "
+                    "LIMIT ?",
+                    (match_expr, limit),
+                ).fetchall()
+            else:
+                rows = []
         else:
-            rows = []
-    else:
-        rows = conn.execute(
-            "SELECT * FROM known_foods ORDER BY updated DESC, name LIMIT ?",
-            (limit,),
-        ).fetchall()
-    conn.close()
+            rows = conn.execute(
+                "SELECT * FROM known_foods ORDER BY updated DESC, name LIMIT ?",
+                (limit,),
+            ).fetchall()
 
     results = []
     for row in rows:
@@ -422,13 +410,9 @@ def get_supplements(active_only: bool = True) -> list[dict]:
     Args:
         active_only: If True, only return supplements without a stopped date.
     """
-    conn = get_connection()
     if active_only:
-        rows = conn.execute("SELECT * FROM supplements WHERE stopped IS NULL").fetchall()
-    else:
-        rows = conn.execute("SELECT * FROM supplements ORDER BY started DESC").fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+        return _query("SELECT * FROM supplements WHERE stopped IS NULL")
+    return _query("SELECT * FROM supplements ORDER BY started DESC")
 
 
 @mcp.tool()
@@ -439,20 +423,16 @@ def get_blood_tests(marker: Optional[str] = None, days: int = 365) -> list[dict]
         marker: Filter by marker name (e.g. "Vitamin D"). None = all markers.
         days: Look back this many days (default 365)
     """
-    conn = get_connection()
-    cutoff = (datetime.now().date() - __import__("datetime").timedelta(days=days)).isoformat()
+    cutoff = _cutoff(days)
     if marker:
-        rows = conn.execute(
+        return _query(
             "SELECT * FROM blood_tests WHERE date >= ? AND marker = ? ORDER BY date DESC",
             (cutoff, marker),
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT * FROM blood_tests WHERE date >= ? ORDER BY date DESC, marker",
-            (cutoff,),
-        ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+        )
+    return _query(
+        "SELECT * FROM blood_tests WHERE date >= ? ORDER BY date DESC, marker",
+        (cutoff,),
+    )
 
 
 @mcp.tool()
@@ -462,14 +442,10 @@ def get_alcohol_caffeine(days: int = 30) -> list[dict]:
     Args:
         days: Number of days to look back (default 30)
     """
-    conn = get_connection()
-    cutoff = (datetime.now().date() - __import__("datetime").timedelta(days=days)).isoformat()
-    rows = conn.execute(
+    return _query(
         "SELECT * FROM alcohol_caffeine WHERE date >= ? ORDER BY date DESC",
-        (cutoff,),
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+        (_cutoff(days),),
+    )
 
 
 @mcp.tool()
@@ -479,22 +455,17 @@ def get_weight(days: int = 90) -> list[dict]:
     Args:
         days: Number of days to look back (default 90)
     """
-    conn = get_connection()
-    cutoff = (datetime.now().date() - __import__("datetime").timedelta(days=days)).isoformat()
-    rows = conn.execute(
+    return _query(
         "SELECT * FROM weight WHERE datetime >= ? ORDER BY datetime DESC",
-        (cutoff,),
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+        (_cutoff(days),),
+    )
 
 
 @mcp.tool()
 def get_profile() -> dict:
     """Get the user's health profile (name, DOB, height, weight, etc.)."""
-    conn = get_connection()
-    rows = conn.execute("SELECT field, value FROM profile").fetchall()
-    conn.close()
+    with closing(get_connection()) as conn:
+        rows = conn.execute("SELECT field, value FROM profile").fetchall()
     return {row["field"]: row["value"] for row in rows}
 
 
@@ -505,14 +476,10 @@ def get_hrv(days: int = 30) -> list[dict]:
     Args:
         days: Number of days to look back (default 30)
     """
-    conn = get_connection()
-    cutoff = (datetime.now().date() - __import__("datetime").timedelta(days=days)).isoformat()
-    rows = conn.execute(
+    return _query(
         "SELECT * FROM hrv WHERE datetime >= ? ORDER BY datetime DESC",
-        (cutoff,),
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+        (_cutoff(days),),
+    )
 
 
 @mcp.tool()
@@ -522,14 +489,10 @@ def get_resting_heart_rate(days: int = 30) -> list[dict]:
     Args:
         days: Number of days to look back (default 30)
     """
-    conn = get_connection()
-    cutoff = (datetime.now().date() - __import__("datetime").timedelta(days=days)).isoformat()
-    rows = conn.execute(
+    return _query(
         "SELECT * FROM resting_heart_rate WHERE date >= ? ORDER BY datetime DESC",
-        (cutoff,),
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+        (_cutoff(days),),
+    )
 
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
