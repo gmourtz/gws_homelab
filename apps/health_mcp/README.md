@@ -49,7 +49,7 @@ src/db.py                connection (WAL) + schema init
 schema.sql               table definitions (managed + manual)
 tests/                   pytest suite
 health_coach_prompt.md   agent system prompt (templated into stacks/openclaw.json.j2)
-Dockerfile               python:3.12-slim, runs as uid 1000, DB on /data volume
+Dockerfile               python:3.12-slim, runs as non-root `appuser`, DB on /data volume
 apple_health_export/     ingest input — gitignored (~1.2 GB, re-exported from the Health app)
 data/                    SQLite DB — gitignored
 ```
@@ -90,9 +90,6 @@ HEALTH_DB_PATH=./data/health.db .venv/bin/python src/server.py   # serves http:/
 
 ## Operational notes
 
-- **Go-live gap:** `openclaw_health_mcp_enabled` is currently set only in
-  `inventory/host_vars/openclaw.yml`, so the optiplex stack won't render the container. Promote it to
-  `group_vars/all/` before deploying.
 - **No `get_wrist_temperature` tool yet** — the data is ingested (`wrist_temperature`) but not exposed;
   the coach's wrist-temperature illness heuristic is dormant until a read tool is added.
 - **Privacy:** the agent's vision model runs on OpenAI, so any food or lab-report images it processes
