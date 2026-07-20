@@ -364,6 +364,46 @@
         - tailscale_serve_port is defined
       notify: Recreate openclaw
 
+    # --- Health-coach agent workspace (openclaw host, gated on the health flag) ---
+    # OpenClaw composes an agent's system prompt from files in its workspace, not from
+    # a config key — so the coach persona lives here, not in openclaw.json.
+    #   SOUL.md   = the coaching persona (reuses apps/health_mcp/health_coach_prompt.md)
+    #   AGENTS.md = the session/tool procedure
+    - name: Ensure health-coach workspace exists in openclaw volume
+      ansible.builtin.file:
+        path: /var/lib/docker/volumes/stacks_openclaw-data/_data/workspace-health
+        state: directory
+        owner: "1000"
+        group: "1000"
+        mode: "0700"
+      when:
+        - inventory_hostname == 'openclaw'
+        - openclaw_health_mcp_enabled | default(false)
+
+    - name: Seed health-coach SOUL.md (persona) from health_coach_prompt.md
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../apps/health_mcp/health_coach_prompt.md"
+        dest: /var/lib/docker/volumes/stacks_openclaw-data/_data/workspace-health/SOUL.md
+        owner: "1000"
+        group: "1000"
+        mode: "0644"
+      when:
+        - inventory_hostname == 'openclaw'
+        - openclaw_health_mcp_enabled | default(false)
+      notify: Recreate openclaw
+
+    - name: Seed health-coach AGENTS.md (session + tool procedure)
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../apps/health_mcp/coach_workspace/AGENTS.md"
+        dest: /var/lib/docker/volumes/stacks_openclaw-data/_data/workspace-health/AGENTS.md
+        owner: "1000"
+        group: "1000"
+        mode: "0644"
+      when:
+        - inventory_hostname == 'openclaw'
+        - openclaw_health_mcp_enabled | default(false)
+      notify: Recreate openclaw
+
     - name: Fix openclaw state dir permissions
       ansible.builtin.file:
         path: /var/lib/docker/volumes/stacks_openclaw-data/_data
