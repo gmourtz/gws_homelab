@@ -344,7 +344,7 @@ services:
       PORT: "8100"
       HEALTH_DB_PATH: "/data/health.db"
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8100/mcp')\" || exit 1"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8100/health')\" || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
