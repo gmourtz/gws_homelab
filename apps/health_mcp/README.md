@@ -16,7 +16,7 @@ OpenClaw "Health Coach" agent  ──MCP over HTTP, :8100/mcp──▶   server.
 
 - **`src/ingest.py`** parses `export.xml` and rewrites the *managed* tables. Idempotent full-replace
   (an Apple Health export always contains the complete history).
-- **`src/server.py`** (FastMCP, Streamable HTTP, port `8100`, path `/mcp`) exposes 16 typed tools.
+- **`src/server.py`** (FastMCP, Streamable HTTP, port `8100`, path `/mcp`) exposes 18 typed tools.
 - **`src/db.py`** opens SQLite in WAL mode and applies `schema.sql` on startup.
 - The agent itself lives elsewhere (OpenClaw, on the `openclaw` host); this service is only the data
   layer it calls.
@@ -27,8 +27,8 @@ Two table classes, and the distinction is load-bearing:
 
 - **Managed** (25 tables — `daily_summary`, `workouts`, `sleep`, `hrv`, `resting_heart_rate`,
   `training_zones`, …): sourced from Apple Health, **wholesale-replaced on every ingest**.
-- **Manual** (`meals`, `supplements`, `blood_tests`, `alcohol_caffeine`): written live by the agent
-  through the write tools, **never touched by ingest**.
+- **Manual** (`meals`, `supplements`, `blood_tests`, `alcohol_caffeine`, `known_foods`): written live by
+  the agent through the write tools, **never touched by ingest**.
 
 This split is why re-syncing Apple Health data never wipes logged meals or bloodwork. Any sync path
 **must** preserve the manual tables — see [Deployment](#deployment-gws_homelab).
@@ -37,8 +37,8 @@ This split is why re-syncing Apple Health data never wipes logged meals or blood
 
 | | |
 |---|---|
-| **Write** (manual tables) | `log_meal`, `log_alcohol_caffeine`, `log_blood_test`, `upsert_supplement` |
-| **Read** | `get_daily_summary`, `get_recent_workouts`, `get_sleep`, `get_hrv`, `get_resting_heart_rate`, `get_weight`, `get_training_zones`, `get_meals`, `get_supplements`, `get_blood_tests`, `get_alcohol_caffeine`, `get_profile` |
+| **Write** (manual tables) | `log_meal`, `log_alcohol_caffeine`, `log_blood_test`, `upsert_supplement`, `upsert_known_food` |
+| **Read** | `get_daily_summary`, `get_recent_workouts`, `get_sleep`, `get_hrv`, `get_resting_heart_rate`, `get_weight`, `get_training_zones`, `get_meals`, `get_known_foods`, `get_supplements`, `get_blood_tests`, `get_alcohol_caffeine`, `get_profile` |
 
 ## Layout
 
@@ -58,7 +58,7 @@ data/                    SQLite DB — gitignored
 
 ```sh
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m pytest          # 29 tests
+.venv/bin/python -m pytest          # 35 tests
 ```
 
 ## Ingesting data
@@ -92,5 +92,8 @@ HEALTH_DB_PATH=./data/health.db .venv/bin/python src/server.py   # serves http:/
 
 - **No `get_wrist_temperature` tool yet** — the data is ingested (`wrist_temperature`) but not exposed;
   the coach's wrist-temperature illness heuristic is dormant until a read tool is added.
+- **Food library search:** `known_foods` is indexed by an FTS5 virtual table (`known_foods_fts`, kept in
+  sync by triggers). `get_known_foods` matches with bm25 ranking (name/brand weighted over ingredients),
+  caps results, and omits the ingredient text unless `include_ingredients=true`.
 - **Privacy:** the agent's vision model runs on OpenAI, so any food or lab-report images it processes
   leave the homelab.
