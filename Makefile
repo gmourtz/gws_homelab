@@ -1,6 +1,6 @@
 # GWS Homelab
 
-.PHONY: help setup ping deploy stacks vault routeros
+.PHONY: help setup ping deploy stacks vault routeros health-sync
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -27,6 +27,9 @@ vault: ## Edit encrypted vault secrets
 
 routeros: ## Configure MikroTik RouterOS
 	ansible-playbook playbooks/configure-routeros.yml
+
+health-sync: ## Refresh health DB on optiplex from an Apple Health export (preserves manual logs)
+	ansible-playbook playbooks/sync-health-db.yml
 
 test: ## Run unit tests for all apps
 	@for dir in apps/*/; do \
