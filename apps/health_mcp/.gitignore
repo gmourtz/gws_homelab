@@ -2,4 +2,4 @@ data/
 .pytest_cache/
 .venv/
 __pycache__/
-apple_health_export/
+apple_health_export
