@@ -5,7 +5,7 @@ health_to_sqlite.py
 Parses an Apple Health export.xml and writes all metrics into a SQLite database.
 Idempotent: managed tables are cleared and fully rewritten on each run (Apple
 Health export always contains the full history). Manual tables (meals,
-supplements, blood_tests, alcohol_caffeine) are NEVER touched.
+supplements, blood_tests, alcohol_caffeine, known_foods) are NEVER touched.
 
 Usage:
     python3 health_to_sqlite.py /path/to/apple_health_export/export.xml [--db /path/to/health.db]
@@ -66,7 +66,7 @@ MANAGED_TABLES = [
     "running_ground_contact", "running_vertical_osc", "training_zones",
 ]
 
-MANUAL_TABLES = ["meals", "supplements", "blood_tests", "alcohol_caffeine"]
+MANUAL_TABLES = ["meals", "supplements", "blood_tests", "alcohol_caffeine", "known_foods"]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

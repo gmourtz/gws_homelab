@@ -232,3 +232,47 @@ CREATE TABLE IF NOT EXISTS alcohol_caffeine (
     caffeine_servings REAL,
     notes             TEXT
 );
+
+-- Reference library of regular / packaged foods so they can be logged by name
+-- without a photo (e.g. SimmerEats dishes, Huel formats). Macros are per serving.
+CREATE TABLE IF NOT EXISTS known_foods (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT NOT NULL,     -- dish/product name, e.g. "SimmerEats Italian Turkey Rigatoni (#15)"
+    brand         TEXT,              -- e.g. "SimmerEats", "Huel"
+    serving       TEXT,              -- portion the macros are for, e.g. "400 g pack", "500 ml bottle"
+    calories_kcal REAL NOT NULL,
+    protein_g     REAL NOT NULL,
+    carbs_g       REAL NOT NULL,
+    fat_g         REAL NOT NULL,
+    ingredients   TEXT,              -- full ingredient list / allergens (allergens in CAPS as on the label)
+    notes         TEXT,              -- disambiguation hints, MyFitnessPal search term, storage, etc.
+    updated       TEXT               -- YYYY-MM-DD last added/updated
+);
+CREATE INDEX IF NOT EXISTS idx_known_foods_name ON known_foods(name);
+
+-- Full-text search over the food library (FTS5). External-content index that mirrors
+-- known_foods and is kept in sync by the triggers below; get_known_foods queries it with
+-- MATCH + bm25 ranking (name and brand weighted above ingredients).
+CREATE VIRTUAL TABLE IF NOT EXISTS known_foods_fts USING fts5(
+    name, brand, ingredients,
+    content='known_foods',
+    content_rowid='id'
+);
+
+CREATE TRIGGER IF NOT EXISTS known_foods_ai AFTER INSERT ON known_foods BEGIN
+    INSERT INTO known_foods_fts(rowid, name, brand, ingredients)
+    VALUES (new.id, new.name, new.brand, new.ingredients);
+END;
+CREATE TRIGGER IF NOT EXISTS known_foods_ad AFTER DELETE ON known_foods BEGIN
+    INSERT INTO known_foods_fts(known_foods_fts, rowid, name, brand, ingredients)
+    VALUES ('delete', old.id, old.name, old.brand, old.ingredients);
+END;
+CREATE TRIGGER IF NOT EXISTS known_foods_au AFTER UPDATE ON known_foods BEGIN
+    INSERT INTO known_foods_fts(known_foods_fts, rowid, name, brand, ingredients)
+    VALUES ('delete', old.id, old.name, old.brand, old.ingredients);
+    INSERT INTO known_foods_fts(rowid, name, brand, ingredients)
+    VALUES (new.id, new.name, new.brand, new.ingredients);
+END;
+
+-- Backfill / re-sync the index from existing rows (idempotent; a no-op on a fresh DB).
+INSERT INTO known_foods_fts(known_foods_fts) VALUES('rebuild');

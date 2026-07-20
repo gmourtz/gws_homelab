@@ -102,6 +102,47 @@ class TestUpsertSupplement:
         assert "Stopped" in result
 
 
+class TestUpsertKnownFood:
+    def test_add_new(self, mock_db):
+        from server import upsert_known_food
+        result = upsert_known_food(
+            name="SimmerEats Italian Turkey Rigatoni (#15)",
+            calories_kcal=573, protein_g=30.5, carbs_g=73.2, fat_g=15.7,
+            brand="SimmerEats", serving="400 g pack",
+            ingredients="Rigatoni Pasta (Durum WHEAT Semolina), Turkey Mince (18%), Mild Cheddar Cheese (MILK)",
+            notes="MyFitnessPal: search 'Italian Turkey Rigatoni'",
+        )
+        assert "Saved" in result
+
+        import db
+        conn = db.get_connection()
+        row = conn.execute("SELECT * FROM known_foods WHERE brand = 'SimmerEats'").fetchone()
+        assert row["protein_g"] == 30.5
+        assert "WHEAT" in row["ingredients"]
+        assert row["updated"] is not None
+        conn.close()
+
+    def test_update_matches_case_insensitively_and_keeps_ingredients(self, mock_db):
+        from server import upsert_known_food
+        upsert_known_food(
+            name="Test Dish", calories_kcal=500, protein_g=30, carbs_g=50, fat_g=15,
+            ingredients="chicken, rice",
+        )
+        # Refresh macros only, different case in the name.
+        result = upsert_known_food(
+            name="test dish", calories_kcal=520, protein_g=32, carbs_g=52, fat_g=16,
+        )
+        assert "Updated" in result
+
+        import db
+        conn = db.get_connection()
+        rows = conn.execute("SELECT * FROM known_foods").fetchall()
+        assert len(rows) == 1  # matched, not duplicated
+        assert rows[0]["calories_kcal"] == 520
+        assert rows[0]["ingredients"] == "chicken, rice"  # preserved
+        conn.close()
+
+
 class TestReadTools:
     def test_get_daily_summary_empty(self, mock_db):
         from server import get_daily_summary
@@ -167,3 +208,47 @@ class TestReadTools:
         result = get_supplements(active_only=True)
         assert len(result) == 1
         assert result[0]["supplement"] == "Omega-3"
+
+    def test_get_known_foods(self, mock_db):
+        from server import upsert_known_food, get_known_foods
+        upsert_known_food(name="SimmerEats Peri Chicken", calories_kcal=500,
+                          protein_g=40, carbs_g=45, fat_g=12, brand="SimmerEats",
+                          ingredients="Chicken, Rice, Peri sauce")
+        upsert_known_food(name="Huel Black (bottle)", calories_kcal=400,
+                          protein_g=35, carbs_g=23, fat_g=17, brand="Huel")
+
+        assert len(get_known_foods()) == 2
+        simmer = get_known_foods(query="simmer")
+        assert len(simmer) == 1
+        assert simmer[0]["brand"] == "SimmerEats"
+        # Ingredients omitted by default to keep the response small; returned on demand.
+        assert "ingredients" not in simmer[0]
+        detailed = get_known_foods(query="simmer", include_ingredients=True)
+        assert "Chicken" in detailed[0]["ingredients"]
+
+    def test_get_known_foods_limit(self, mock_db):
+        from server import upsert_known_food, get_known_foods
+        for i in range(30):
+            upsert_known_food(name=f"Food {i:02d}", calories_kcal=100,
+                              protein_g=10, carbs_g=10, fat_g=5, brand="Test")
+        assert len(get_known_foods()) == 25            # default cap
+        assert len(get_known_foods(limit=5)) == 5
+        assert len(get_known_foods(limit=999)) == 30   # clamped to 100; only 30 exist
+
+    def test_get_known_foods_search_ranks_name_over_ingredient(self, mock_db):
+        from server import upsert_known_food, get_known_foods
+        upsert_known_food(name="Italian Turkey Rigatoni", brand="SimmerEats",
+                          calories_kcal=573, protein_g=31, carbs_g=73, fat_g=16,
+                          ingredients="Rigatoni Pasta, Turkey Mince, Tomato")
+        upsert_known_food(name="Chicken Salad", brand="Homemade",
+                          calories_kcal=300, protein_g=30, carbs_g=10, fat_g=15,
+                          ingredients="Chicken, Lettuce, Turkey-free dressing")
+        # Conversational multi-word query: prefix + OR, ranked by relevance.
+        res = get_known_foods(query="turkey pasta")
+        assert res[0]["name"] == "Italian Turkey Rigatoni"
+
+    def test_get_known_foods_search_prefix(self, mock_db):
+        from server import upsert_known_food, get_known_foods
+        upsert_known_food(name="Italian Turkey Rigatoni", brand="SimmerEats",
+                          calories_kcal=573, protein_g=31, carbs_g=73, fat_g=16)
+        assert any("Rigatoni" in r["name"] for r in get_known_foods(query="rigat"))

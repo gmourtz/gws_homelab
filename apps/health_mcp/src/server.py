@@ -9,6 +9,7 @@ pre-defined to prevent injection.
 """
 
 import os
+import re
 from datetime import date, datetime
 from typing import Optional
 
@@ -215,6 +216,67 @@ def upsert_supplement(
         return f"Added supplement: {supplement} ({dose}, {timing})"
 
 
+@mcp.tool()
+def upsert_known_food(
+    name: str,
+    calories_kcal: float,
+    protein_g: float,
+    carbs_g: float,
+    fat_g: float,
+    brand: Optional[str] = None,
+    serving: Optional[str] = None,
+    ingredients: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> str:
+    """Save or update a regular/packaged food so it can be logged by name later — no photo needed.
+
+    Call when I give you a label for something I eat regularly or say "remember this" / "save this"
+    (e.g. a SimmerEats dish, a Huel format). Match on name; existing optional fields are kept when
+    an argument is omitted, so you can refresh macros without wiping the ingredient list.
+
+    Args:
+        name: Dish/product name, e.g. "SimmerEats Italian Turkey Rigatoni (#15)"
+        calories_kcal: Calories for one serving
+        protein_g: Protein in grams for one serving
+        carbs_g: Carbs in grams for one serving
+        fat_g: Fat in grams for one serving
+        brand: Brand/maker, e.g. "SimmerEats", "Huel"
+        serving: Portion the macros are for, e.g. "400 g pack", "500 ml bottle"
+        ingredients: Full ingredient list / allergens (keep allergens in CAPS as on the label)
+        notes: Disambiguation hints, MyFitnessPal search term, storage, etc.
+    """
+    today = date.today().isoformat()
+    conn = get_connection()
+    existing = conn.execute(
+        "SELECT * FROM known_foods WHERE name = ? COLLATE NOCASE",
+        (name,),
+    ).fetchone()
+
+    if existing:
+        # Preserve existing optional fields when the caller omits them.
+        brand = brand if brand is not None else existing["brand"]
+        serving = serving if serving is not None else existing["serving"]
+        ingredients = ingredients if ingredients is not None else existing["ingredients"]
+        notes = notes if notes is not None else existing["notes"]
+        conn.execute(
+            "UPDATE known_foods SET brand = ?, serving = ?, calories_kcal = ?, protein_g = ?, "
+            "carbs_g = ?, fat_g = ?, ingredients = ?, notes = ?, updated = ? WHERE id = ?",
+            (brand, serving, calories_kcal, protein_g, carbs_g, fat_g, ingredients, notes, today, existing["id"]),
+        )
+        conn.commit()
+        conn.close()
+        return f"Updated known food: {name} ({calories_kcal:g} kcal, {protein_g:g}g protein)"
+    else:
+        conn.execute(
+            "INSERT INTO known_foods (name, brand, serving, calories_kcal, protein_g, carbs_g, fat_g, ingredients, notes, updated) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, brand, serving, calories_kcal, protein_g, carbs_g, fat_g, ingredients, notes, today),
+        )
+        conn.commit()
+        conn.close()
+        return f"Saved known food: {name} ({calories_kcal:g} kcal, {protein_g:g}g protein)"
+
+
 # ── Read tools ────────────────────────────────────────────────────────────────
 
 @mcp.tool()
@@ -298,6 +360,59 @@ def get_meals(days: int = 7) -> list[dict]:
     ).fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+
+@mcp.tool()
+def get_known_foods(
+    query: Optional[str] = None,
+    limit: int = 25,
+    include_ingredients: bool = False,
+) -> list[dict]:
+    """Look up saved regular foods. Call before estimating or asking about a named or packaged food.
+
+    Results are capped and, by default, omit the (long) ingredient list to keep the response small —
+    enough to pick a dish and log its macros. As the library grows, always search by keyword rather
+    than pulling the whole list.
+
+    Args:
+        query: Words to search. Ranked full-text (FTS5) over name, brand, and ingredients, prefix-matched
+            (e.g. "rigat" finds "Rigatoni") and forgiving of extra words. None = most recent.
+        limit: Max rows to return (default 25, capped at 100). Narrow with a keyword instead of raising this.
+        include_ingredients: Include the full ingredient/allergen text per row. Set True only when the
+            ingredients actually matter (e.g. "does my usual have dairy?").
+    """
+    limit = max(1, min(limit, 100))
+    conn = get_connection()
+    if query:
+        tokens = re.findall(r"\w+", query.lower())
+        if tokens:
+            # Ranked full-text search (FTS5). Each token is a prefix term, OR-combined so a
+            # conversational phrase still matches; bm25 weights name/brand above ingredients.
+            match_expr = " OR ".join(f'"{t}"*' for t in tokens)
+            rows = conn.execute(
+                "SELECT kf.* FROM known_foods_fts "
+                "JOIN known_foods AS kf ON kf.id = known_foods_fts.rowid "
+                "WHERE known_foods_fts MATCH ? "
+                "ORDER BY bm25(known_foods_fts, 10.0, 5.0, 1.0), kf.updated DESC "
+                "LIMIT ?",
+                (match_expr, limit),
+            ).fetchall()
+        else:
+            rows = []
+    else:
+        rows = conn.execute(
+            "SELECT * FROM known_foods ORDER BY updated DESC, name LIMIT ?",
+            (limit,),
+        ).fetchall()
+    conn.close()
+
+    results = []
+    for row in rows:
+        item = dict(row)
+        if not include_ingredients:
+            item.pop("ingredients", None)
+        results.append(item)
+    return results
 
 
 @mcp.tool()
