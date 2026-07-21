@@ -1,8 +1,12 @@
 {
   "agents": {
     "defaults": {
-      "model": { "primary": "openai/gpt-5.4-mini" },
-      "models": { "openai/gpt-5.4-mini": {} },
+      "model": { "primary": "openai/gpt-5.6-luna" },
+      "utilityModel": "openai/gpt-5.4-nano",
+      "models": {
+        "openai/gpt-5.6-luna": {},
+        "openai/gpt-5.4-nano": {}
+      },
       "compaction": { "mode": "safeguard" }
     },
     "list": [
