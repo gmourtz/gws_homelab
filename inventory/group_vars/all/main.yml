@@ -358,6 +358,7 @@ event_scout_agent:
       - { name: "MLOps Community",           url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-hVFFq931tAX36Id" }
       - { name: "OpenAI Build Week",         url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-FhWvOxHV0AGL38z" }
       - { name: "AAIF Community London",     url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-yCnujAnSUJXmLFQ" }
+      - { name: "AI Native Club",            url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-eZgGJEuBWaok714" }
       - { name: "OpenAI for Startups",       url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-cRAkoeu56h8zaxC" }
       - { name: "Open Source for AI",        url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-8zLyKMgaKTvonbT" }
       - { name: "Air Street (London AI)",    url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-zUWmkxeBGlQQenp" }
