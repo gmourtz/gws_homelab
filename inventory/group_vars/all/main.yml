@@ -369,7 +369,6 @@ event_scout_agent:
       - { name: "incident.io events",        url: "https://api.lu.ma/ics/get?entity=calendar&id=cal-0jikzPhENNNJBGU" }
     eventbrite_searches:
       - { name: "EB data engineering",       url: "https://www.eventbrite.co.uk/d/united-kingdom--london/data-engineering/" }
-      - { name: "EB artificial intelligence", url: "https://www.eventbrite.co.uk/d/united-kingdom--london/artificial-intelligence/" }
       - { name: "EB databricks",             url: "https://www.eventbrite.co.uk/d/united-kingdom--london/databricks/" }
       - { name: "EB snowflake",              url: "https://www.eventbrite.co.uk/d/united-kingdom--london/snowflake/" }
       - { name: "EB startups",               url: "https://www.eventbrite.co.uk/d/united-kingdom--london/startups/" }
