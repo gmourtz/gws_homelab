@@ -308,9 +308,15 @@ services:
       TELEGRAM_CHAT_ID: "{{ vault_event_scout_telegram_chat_id }}"
 {% if vault_event_scout_sultan_telegram_bot_token is defined and vault_event_scout_sultan_telegram_chat_id is defined %}
       # Sultan on his own bot — the `sultan` recipient in the config. Added only
-      # when both vault vars exist; he gets new events only, no backfill.
+      # when both vault vars exist; he gets the current catalogue on first run.
       SULTAN_TELEGRAM_BOT_TOKEN: "{{ vault_event_scout_sultan_telegram_bot_token }}"
       SULTAN_TELEGRAM_CHAT_ID: "{{ vault_event_scout_sultan_telegram_chat_id }}"
+{% endif %}
+{% if vault_event_scout_deniz_telegram_bot_token is defined and vault_event_scout_deniz_telegram_chat_id is defined %}
+      # Deniz on his own bot — the `deniz` recipient in the config. Added only
+      # when both vault vars exist; he gets the current catalogue on first run.
+      DENIZ_TELEGRAM_BOT_TOKEN: "{{ vault_event_scout_deniz_telegram_bot_token }}"
+      DENIZ_TELEGRAM_CHAT_ID: "{{ vault_event_scout_deniz_telegram_chat_id }}"
 {% endif %}
       RUN_AT_HOUR: "5"     # daily cycle anchored to 05:00 Europe/London
       DATA_DIR: "/data"

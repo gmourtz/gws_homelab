@@ -299,6 +299,8 @@ event_scout_agent:
     - { name: "georgios", token_env: "TELEGRAM_BOT_TOKEN",        chat_env: "TELEGRAM_CHAT_ID",        backfill: true }
     # Sultan on his own bot (gws_events_scout_sultan_bot) — gets the current catalogue on first run
     - { name: "sultan",   token_env: "SULTAN_TELEGRAM_BOT_TOKEN", chat_env: "SULTAN_TELEGRAM_CHAT_ID", backfill: true }
+    # Deniz on his own bot (gws_events_scout_deniz_bot) — gets the current catalogue on first run
+    - { name: "deniz",    token_env: "DENIZ_TELEGRAM_BOT_TOKEN",  chat_env: "DENIZ_TELEGRAM_CHAT_ID",  backfill: true }
   topics:
     - data engineering
     - AI / LLMs / agents — especially agent harnesses, agentic development, and agent engineering
