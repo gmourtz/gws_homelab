@@ -148,6 +148,7 @@ def parse_export(xml_path):
     running_power = []
     running_gct = []
     running_vo = []
+    current_workout = None
 
     for event, elem in tree:
         tag = elem.tag
@@ -267,15 +268,32 @@ def parse_export(xml_path):
             w_start = parse_dt(elem.get("startDate"))
             w_end = parse_dt(elem.get("endDate"))
             duration = safe_float(elem.get("duration"), 1)
+            # Legacy attributes (pre-iOS 16 exports). On modern exports these are
+            # absent and get filled from the child WorkoutStatistics streamed next.
             dist = safe_float(elem.get("totalDistance"), 3)
             dist_unit = elem.get("totalDistanceUnit", "")
             cal = safe_float(elem.get("totalEnergyBurned"), 1)
 
-            workouts.append({
+            current_workout = {
                 "type": w_type, "start": w_start, "end": w_end,
                 "duration": duration, "distance": dist,
                 "dist_unit": dist_unit, "calories": cal,
-            })
+            }
+            workouts.append(current_workout)
+
+        elif tag == "WorkoutStatistics":
+            # Modern exports (iOS 16+) carry distance/calories in per-workout
+            # <WorkoutStatistics> children, not Workout attributes. Start-event
+            # order is parent-first, so patch the workout we're currently inside.
+            if current_workout is not None:
+                s_type = elem.get("type", "")
+                if s_type in (f"{HK}DistanceWalkingRunning", f"{HK}DistanceCycling"):
+                    if current_workout["distance"] is None:
+                        current_workout["distance"] = safe_float(elem.get("sum"), 3)
+                        current_workout["dist_unit"] = elem.get("unit", "")
+                elif s_type == f"{HK}ActiveEnergyBurned":
+                    if current_workout["calories"] is None:
+                        current_workout["calories"] = safe_float(elem.get("sum"), 1)
 
         elem.clear()
 
