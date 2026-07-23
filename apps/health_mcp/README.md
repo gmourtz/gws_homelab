@@ -38,7 +38,7 @@ This split is why re-syncing Apple Health data never wipes logged meals or blood
 | | |
 |---|---|
 | **Write** (manual tables) | `log_meal`, `log_alcohol_caffeine`, `log_blood_test`, `upsert_supplement`, `upsert_known_food` |
-| **Read** | `get_daily_summary`, `get_recent_workouts`, `get_sleep`, `get_hrv`, `get_resting_heart_rate`, `get_weight`, `get_training_zones`, `get_meals`, `get_known_foods`, `get_supplements`, `get_blood_tests`, `get_alcohol_caffeine`, `get_profile` |
+| **Read** | `get_daily_summary`, `get_recent_workouts`, `get_running_dynamics`, `get_sleep`, `get_hrv`, `get_resting_heart_rate`, `get_vo2_max`, `get_recovery_signals`, `get_weight`, `get_training_zones`, `get_meals`, `get_known_foods`, `get_supplements`, `get_blood_tests`, `get_alcohol_caffeine`, `get_profile` |
 
 ## Layout
 
