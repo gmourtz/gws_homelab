@@ -7,7 +7,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import sources
-from sources import enrich_luma_descriptions, fetch_all, fetch_eventbrite, fetch_ics
+from sources import (
+    enrich_luma_descriptions,
+    fetch_all,
+    fetch_eventbrite,
+    fetch_eventbrite_price,
+    fetch_ics,
+)
 from models import Event
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -87,6 +93,31 @@ class TestFetchEventbrite:
         with patch.object(sources.requests, "get", return_value=eventbrite_response):
             events = fetch_eventbrite("x", "https://example.com/d/x/")
         assert all(e.url for e in events)
+
+
+class TestFetchEventbritePrice:
+    def test_returns_low_price_for_paid_event(self):
+        page = _mock_response((FIXTURES / "eventbrite_event_paid.html").read_bytes())
+        with patch.object(sources.requests, "get", return_value=page):
+            price = fetch_eventbrite_price("https://example.com/e/paid")
+        assert price == 216.16
+
+    def test_returns_zero_for_free_event(self):
+        page = _mock_response((FIXTURES / "eventbrite_event_free.html").read_bytes())
+        with patch.object(sources.requests, "get", return_value=page):
+            price = fetch_eventbrite_price("https://example.com/e/free")
+        assert price == 0.0
+
+    def test_returns_none_when_offers_missing(self, eventbrite_response):
+        # search-page fixture's items have no `offers` key on the page itself
+        with patch.object(sources.requests, "get", return_value=eventbrite_response):
+            price = fetch_eventbrite_price("https://example.com/e/unknown")
+        assert price is None
+
+    def test_fetch_failure_returns_none(self):
+        with patch.object(sources.requests, "get", side_effect=ConnectionError("boom")):
+            price = fetch_eventbrite_price("https://example.com/e/down")
+        assert price is None
 
 
 def _luma_event(uid: str = "a", description: str = "") -> Event:

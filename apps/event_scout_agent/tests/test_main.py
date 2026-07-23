@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 import sources
 from main import (
     build_digest,
+    drop_paid_eventbrite,
     filter_events,
     resolve_recipients,
     run_cycle,
@@ -42,6 +43,55 @@ class TestFilterEvents:
         ]
         kept = filter_events(events, now, lookahead_days=45)
         assert [e.uid for e in kept] == ["fresh"]
+
+
+class TestDropPaidEventbrite:
+    def _eb_event(self, uid: str) -> Event:
+        event = _event(uid, datetime.now(timezone.utc) + timedelta(days=2))
+        event.source_type = "eventbrite"
+        return event
+
+    def test_paid_event_is_tombstoned_and_dropped(self, tmp_path, monkeypatch):
+        store = EventStore(str(tmp_path))
+        event = self._eb_event("paid")
+        monkeypatch.setattr(sources, "fetch_eventbrite_price", lambda url: 216.16)
+
+        kept = drop_paid_eventbrite([event], store)
+
+        assert kept == []
+        assert store.is_ranked("paid")
+        assert store.ranking("paid")["score"] == 0
+
+    def test_unknown_price_event_passes_through_unranked(self, tmp_path, monkeypatch):
+        store = EventStore(str(tmp_path))
+        event = self._eb_event("unknown")
+        monkeypatch.setattr(sources, "fetch_eventbrite_price", lambda url: None)
+
+        kept = drop_paid_eventbrite([event], store)
+
+        assert kept == [event]
+        assert not store.is_ranked("unknown")
+
+    def test_confirmed_free_event_passes_through_unranked(self, tmp_path, monkeypatch):
+        store = EventStore(str(tmp_path))
+        event = self._eb_event("free")
+        monkeypatch.setattr(sources, "fetch_eventbrite_price", lambda url: 0.0)
+
+        kept = drop_paid_eventbrite([event], store)
+
+        assert kept == [event]
+        assert not store.is_ranked("free")
+
+    def test_non_eventbrite_event_skips_price_check(self, tmp_path, monkeypatch):
+        store = EventStore(str(tmp_path))
+        event = _event("meetup", datetime.now(timezone.utc) + timedelta(days=2))
+        price_check = MagicMock()
+        monkeypatch.setattr(sources, "fetch_eventbrite_price", price_check)
+
+        kept = drop_paid_eventbrite([event], store)
+
+        assert kept == [event]
+        price_check.assert_not_called()
 
 
 class TestResolveRecipients:
