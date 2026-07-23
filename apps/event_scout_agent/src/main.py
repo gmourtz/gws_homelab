@@ -141,6 +141,39 @@ def drop_paid_eventbrite(events, store):
     return kept
 
 
+def drop_non_local_luma(events, location, store):
+    """Drop Luma events whose page-resolved venue (set by
+    enrich_luma_descriptions, called just before this) doesn't mention the
+    user's city. Events with no resolved location — online events, ones
+    Luma didn't geocode, or a failed page fetch — pass through untouched;
+    those are still the LLM's call. This only catches what it already gets
+    wrong: a real, known address in a different city."""
+    from ranker import EventRanking
+    from sources import is_luma_url
+
+    kept = []
+    dropped = 0
+    for event in events:
+        if not is_luma_url(event.url) or not event.location or location.lower() in event.location.lower():
+            kept.append(event)
+            continue
+        store.add_rankings(
+            [event],
+            {
+                event.uid: EventRanking(
+                    event_id=0,
+                    score=0,
+                    matched_topics=[],
+                    reason=f"Not near {location} — resolved venue is {event.location}",
+                )
+            },
+        )
+        dropped += 1
+    if dropped:
+        log.info("Filtered %d Luma events outside %s", dropped, location)
+    return kept
+
+
 def build_digest(selected) -> str:
     lines = [f"📅 *{len(selected)} new event{'s' if len(selected) != 1 else ''} for you*"]
     for event, ranking in selected:
@@ -184,6 +217,8 @@ def run_cycle(cfg, ranker, notifier, store) -> int:
         enriched = enrich_luma_descriptions(unranked)
         if enriched:
             log.info("Enriched %d Luma events with full descriptions", enriched)
+        unranked = drop_non_local_luma(unranked, cfg["location"], store)
+    if unranked:
         new_rankings = ranker.rank(
             unranked, cfg["topics"], cfg["location"], cfg["include_online"], cfg["notes"]
         )

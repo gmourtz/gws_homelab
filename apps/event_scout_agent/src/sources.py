@@ -201,31 +201,50 @@ def _mirror_text(node) -> str:
     return text
 
 
+def is_luma_url(url: str) -> bool:
+    return bool(_LUMA_URL_RE.fullmatch(url))
+
+
 def enrich_luma_descriptions(events: list[Event], delay: float = 0.3) -> int:
-    """Luma ICS descriptions are stubs ("Get up-to-date information at: ...").
-    Fetch each event's page and append the full description from its embedded
-    __NEXT_DATA__ JSON, so the ranker sees speaker lineups and event detail.
+    """Luma ICS descriptions are stubs ("Get up-to-date information at: ...")
+    and its LOCATION field holds the event URL, not a venue. Fetch each
+    event's page and, from its embedded __NEXT_DATA__ JSON: append the full
+    description (so the ranker sees speaker lineups and event detail), and
+    resolve the real venue city into `location` — Luma's global calendars
+    (Claude Community Events, OpenAI Build Week, ...) mix in events from
+    every city, and the small local ranking model doesn't reliably catch
+    that from the title alone (see: an 8/10 for a Porto Alegre event).
+    `location` is cleared up front so a resolution failure (fetch error, no
+    geo data, an online event with no fixed venue) reads as "unknown" to a
+    later location filter, not "doesn't match" — it must never cause an
+    event to look like it's in the wrong city when we simply couldn't tell.
     Returns the number of events enriched. Failures are soft per event."""
     enriched = 0
     for event in events:
         match = _LUMA_URL_RE.search(event.description) or _LUMA_URL_RE.search(event.url)
         if not match:
             continue
+        event.location = ""
         try:
             resp = requests.get(match.group(0), headers=HEADERS, timeout=TIMEOUT)
             resp.raise_for_status()
             data_match = _NEXT_DATA_RE.search(resp.text)
             if not data_match:
                 continue
-            data = json.loads(data_match.group(1))
-            mirror = data["props"]["pageProps"]["initialData"]["data"].get(
-                "description_mirror"
-            )
+            payload = json.loads(data_match.group(1))["props"]["pageProps"]["initialData"]["data"]
+            mirror = payload.get("description_mirror")
             text = _mirror_text(mirror).strip()
             if text:
                 # keep the stub — its "Hosted by ..." line is signal too
                 event.description = f"{event.description}\n\n{text}"[:MAX_DESCRIPTION_CHARS]
                 enriched += 1
+            luma_event = payload.get("event") or {}
+            if luma_event.get("location_type") == "offline":
+                geo = luma_event.get("geo_address_info") or {}
+                city = geo.get("city_state") or geo.get("city")
+                if city:
+                    country = geo.get("country")
+                    event.location = f"{city}, {country}" if country else city
         except Exception as e:
             log.warning("Luma enrichment failed for %s: %s", event.title, e)
         if delay:

@@ -13,11 +13,11 @@ class TelegramNotifier:
         """Send to one recipient's chat, splitting to stay under Telegram's limit."""
         ok = True
         for chunk in self._split(text, 4000):
-            if not self._send_chunk(recipient["bot_token"], recipient["chat_id"], chunk):
+            if not self._send_chunk(recipient["name"], recipient["bot_token"], recipient["chat_id"], chunk):
                 ok = False
         return ok
 
-    def _send_chunk(self, bot_token: str, chat_id: str, text: str) -> bool:
+    def _send_chunk(self, name: str, bot_token: str, chat_id: str, text: str) -> bool:
         base_url = f"https://api.telegram.org/bot{bot_token}"
         try:
             resp = requests.post(
@@ -41,6 +41,14 @@ class TelegramNotifier:
                 if not resp.ok:
                     log.error("Telegram send failed: %s", resp.text)
                     return False
+            # No delete/recall feature in this app — log enough to do it by hand:
+            # POST https://api.telegram.org/bot<TOKEN>/deleteMessage with these two.
+            message_id = (resp.json() or {}).get("result", {}).get("message_id")
+            log.info(
+                "Sent to %r (chat_id=%s, message_id=%s) — recall manually via "
+                "bot<TOKEN>/deleteMessage?chat_id=%s&message_id=%s",
+                name, chat_id, message_id, chat_id, message_id,
+            )
             return True
         except requests.RequestException as e:
             log.error("Telegram error: %s", e)
