@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 import sources
 from main import (
     build_digest,
+    drop_non_local_luma,
     drop_paid_eventbrite,
     filter_events,
     resolve_recipients,
@@ -92,6 +93,56 @@ class TestDropPaidEventbrite:
 
         assert kept == [event]
         price_check.assert_not_called()
+
+
+class TestDropNonLocalLuma:
+    def _luma_event(self, uid: str, location: str = "") -> Event:
+        event = _event(uid, datetime.now(timezone.utc) + timedelta(days=2))
+        event.url = f"https://luma.com/{uid}"
+        event.location = location
+        return event
+
+    def test_drops_event_with_resolved_venue_in_another_city(self, tmp_path):
+        store = EventStore(str(tmp_path))
+        event = self._luma_event("porto", location="Porto Alegre, Brazil")
+
+        kept = drop_non_local_luma([event], "London", store)
+
+        assert kept == []
+        assert store.is_ranked("porto")
+        assert store.ranking("porto")["score"] == 0
+
+    def test_keeps_event_with_resolved_venue_in_target_city(self, tmp_path):
+        store = EventStore(str(tmp_path))
+        event = self._luma_event("ldn", location="London, United Kingdom")
+
+        kept = drop_non_local_luma([event], "London", store)
+
+        assert kept == [event]
+        assert not store.is_ranked("ldn")
+
+    def test_keeps_event_with_unresolved_location(self, tmp_path):
+        # empty location = "couldn't tell" (online event, geocode miss, or a
+        # failed page fetch) — must never be treated as "wrong city"
+        store = EventStore(str(tmp_path))
+        event = self._luma_event("unknown", location="")
+
+        kept = drop_non_local_luma([event], "London", store)
+
+        assert kept == [event]
+        assert not store.is_ranked("unknown")
+
+    def test_non_luma_event_is_never_filtered_by_location(self, tmp_path):
+        # scoped deliberately to Luma only — Meetup/Eventbrite location text
+        # isn't guaranteed to literally contain the city name
+        store = EventStore(str(tmp_path))
+        event = _event("meetup", datetime.now(timezone.utc) + timedelta(days=2))
+        event.location = "180 Studios, SE1 9PG"  # a real London venue, no "London" in the text
+
+        kept = drop_non_local_luma([event], "London", store)
+
+        assert kept == [event]
+        assert not store.is_ranked("meetup")
 
 
 class TestResolveRecipients:

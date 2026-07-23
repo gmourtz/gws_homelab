@@ -13,6 +13,7 @@ from sources import (
     fetch_eventbrite,
     fetch_eventbrite_price,
     fetch_ics,
+    is_luma_url,
 )
 from models import Event
 
@@ -120,6 +121,17 @@ class TestFetchEventbritePrice:
         assert price is None
 
 
+class TestIsLumaUrl:
+    def test_matches_luma_and_lu_ma_hosts(self):
+        assert is_luma_url("https://luma.com/claude-gz2s")
+        assert is_luma_url("https://lu.ma/claude-gz2s")
+
+    def test_rejects_non_luma_hosts(self):
+        assert not is_luma_url("https://www.meetup.com/x/events/1/")
+        assert not is_luma_url("https://www.eventbrite.co.uk/e/x-tickets-1")
+        assert not is_luma_url("")
+
+
 def _luma_event(uid: str = "a", description: str = "") -> Event:
     return Event(
         uid=uid,
@@ -144,6 +156,34 @@ class TestEnrichLuma:
         assert event.description.startswith("Get up-to-date information")
         assert "founders, builders, AI-native operators" in event.description
         assert len(event.description) <= 2000
+
+    def test_resolves_venue_city_for_offline_event(self):
+        page = _mock_response((FIXTURES / "luma_event_offline.html").read_bytes())
+        event = _luma_event()
+        with patch.object(sources.requests, "get", return_value=page):
+            enrich_luma_descriptions([event], delay=0)
+
+        assert event.location == "Porto Alegre, RS, Brazil"
+
+    def test_online_event_location_stays_unresolved(self):
+        # geo_address_info can still carry the organizer's home city for an
+        # online event — must not be mistaken for the event's venue
+        page = _mock_response((FIXTURES / "luma_event_online.html").read_bytes())
+        event = _luma_event()
+        with patch.object(sources.requests, "get", return_value=page):
+            enrich_luma_descriptions([event], delay=0)
+
+        assert event.location == ""
+
+    def test_stale_location_is_cleared_on_fetch_failure(self):
+        # Luma's ICS LOCATION is the event URL, not a venue — a prior filter
+        # must see "unknown" (empty), never that leftover URL, on failure
+        event = _luma_event()
+        event.location = "https://luma.com/claude-wx2j"
+        with patch.object(sources.requests, "get", side_effect=ConnectionError("boom")):
+            enrich_luma_descriptions([event], delay=0)
+
+        assert event.location == ""
 
     def test_non_luma_event_untouched(self):
         event = _luma_event(description="A normal Meetup description")
