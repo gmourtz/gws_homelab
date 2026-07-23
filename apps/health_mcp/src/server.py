@@ -495,6 +495,91 @@ def get_resting_heart_rate(days: int = 30) -> list[dict]:
     )
 
 
+@mcp.tool()
+def get_vo2_max(days: int = 365) -> list[dict]:
+    """Get VO2 max (cardiorespiratory fitness) measurements — the basis for VDOT and pace targets.
+
+    The watch estimates VO2 max from outdoor runs/walks, so readings are sparse; the default
+    window is wide on purpose. Read this to judge fitness trend and to sanity-check or recalibrate
+    the VDOT behind the pace zones.
+
+    Args:
+        days: Look back this many days (default 365).
+    """
+    return _query(
+        "SELECT * FROM vo2_max WHERE datetime >= ? ORDER BY datetime DESC",
+        (_cutoff(days),),
+    )
+
+
+@mcp.tool()
+def get_recovery_signals(days: int = 14) -> dict:
+    """Get overnight recovery / early-illness signals vs recent baseline, in one call:
+    respiratory rate, blood oxygen, wrist temperature, and post-workout heart-rate recovery.
+
+    Use this in the daily readiness check alongside sleep, HRV, and resting HR. A rising
+    respiratory rate or wrist temperature, or a dip in blood oxygen — especially together with
+    HRV down and resting HR up — can precede illness or overreaching. Flag the pattern; never diagnose.
+
+    Args:
+        days: Look back this many days (default 14) so the latest reading can be compared to baseline.
+
+    Returns a dict with one list per signal, most recent first.
+    """
+    cutoff = _cutoff(days)
+    return {
+        "respiratory_rate": _query(
+            "SELECT date, avg_brpm, min_brpm, max_brpm FROM respiratory_rate WHERE date >= ? ORDER BY date DESC",
+            (cutoff,),
+        ),
+        "blood_oxygen": _query(
+            "SELECT date, avg_pct, min_pct, max_pct FROM blood_oxygen WHERE date >= ? ORDER BY date DESC",
+            (cutoff,),
+        ),
+        "wrist_temperature": _query(
+            "SELECT datetime, temp_celsius FROM wrist_temperature WHERE datetime >= ? ORDER BY datetime DESC",
+            (cutoff,),
+        ),
+        "hr_recovery": _query(
+            "SELECT datetime, recovery_1min FROM hr_recovery WHERE datetime >= ? ORDER BY datetime DESC",
+            (cutoff,),
+        ),
+    }
+
+
+@mcp.tool()
+def get_running_dynamics(days: int = 30) -> list[dict]:
+    """Get running-form metrics aggregated per day: speed, power, ground-contact time, and
+    vertical oscillation (the watch records these during outdoor runs).
+
+    Use for form/economy trends and to explain pace changes — e.g. rising power or falling
+    ground-contact time signals improving running economy. Only days with running data appear.
+
+    Args:
+        days: Look back this many days (default 30).
+    """
+    cutoff = _cutoff(days)
+    # (table, source column, output key) — all literals, no user input in the SQL.
+    specs = [
+        ("running_speed", "speed_kmh", "avg_speed_kmh"),
+        ("running_power", "power_w", "avg_power_w"),
+        ("running_ground_contact", "contact_time_ms", "avg_ground_contact_ms"),
+        ("running_vertical_osc", "vertical_osc_cm", "avg_vertical_osc_cm"),
+    ]
+    merged: dict[str, dict] = {}
+    with closing(get_connection()) as conn:
+        for table, col, out in specs:
+            for row in conn.execute(
+                f"SELECT substr(datetime, 1, 10) AS d, ROUND(AVG({col}), 2) AS v, COUNT(*) AS n "
+                f"FROM {table} WHERE datetime >= ? GROUP BY d",
+                (cutoff,),
+            ).fetchall():
+                day = merged.setdefault(row["d"], {"date": row["d"], "samples": 0})
+                day[out] = row["v"]
+                day["samples"] = max(day["samples"], row["n"])
+    return sorted(merged.values(), key=lambda r: r["date"], reverse=True)
+
+
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 
 def main():
