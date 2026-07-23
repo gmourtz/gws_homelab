@@ -31,7 +31,7 @@ MAX_DESCRIPTION_CHARS = 4000
 
 _URL_RE = re.compile(r"https?://[^\s<>\"\\]+")
 _LDJSON_RE = re.compile(
-    r'<script type="application/ld\+json">(.*?)</script>', re.DOTALL
+    r'<script type="application/ld\+json"[^>]*>(.*?)</script>', re.DOTALL
 )
 _LUMA_URL_RE = re.compile(r"https?://(?:lu\.ma|luma\.com)/[A-Za-z0-9\-_.]+")
 _NEXT_DATA_RE = re.compile(
@@ -149,6 +149,44 @@ def fetch_eventbrite(name: str, search_url: str) -> list[Event]:
             )
     log.info("[%s] %d events from Eventbrite page", name, len(events))
     return events
+
+
+def fetch_eventbrite_price(url: str) -> float | None:
+    """Eventbrite's search-results JSON-LD never carries a price (offers is
+    always null there) — only an event's own page does, under an @type that
+    varies by category (Event/EducationEvent/BusinessEvent/...), so this
+    scans every ld+json block for the first one with an `offers` key rather
+    than matching a specific @type. Returns the lowest ticket price found,
+    or None if it's unknown (fetch failure or no offers block) — callers
+    should treat None as "can't tell", not "free"."""
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+        resp.raise_for_status()
+    except Exception as e:
+        log.warning("Price fetch failed for %s: %s", url, e)
+        return None
+
+    prices: list[float] = []
+    for block in _LDJSON_RE.findall(resp.text):
+        try:
+            data = json.loads(block)
+        except json.JSONDecodeError:
+            continue
+        offers = data.get("offers") if isinstance(data, dict) else None
+        if isinstance(offers, dict):
+            offers = [offers]
+        if not isinstance(offers, list):
+            continue
+        for offer in offers:
+            if not isinstance(offer, dict):
+                continue
+            for key in ("price", "lowPrice"):
+                if key in offer:
+                    try:
+                        prices.append(float(offer[key]))
+                    except (TypeError, ValueError):
+                        pass
+    return min(prices) if prices else None
 
 
 def _mirror_text(node) -> str:
