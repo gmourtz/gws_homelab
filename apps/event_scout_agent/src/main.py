@@ -104,6 +104,43 @@ def filter_events(events, now, lookahead_days):
     return [e for e in events if now <= e.start <= horizon]
 
 
+def drop_paid_eventbrite(events, store):
+    """Fetch each unranked Eventbrite event's own page for its ticket price
+    (the search-results feed never carries one) and tombstone paid ones —
+    score 0, never ranked or sent — instead of leaving it to the LLM, which
+    scores workshop/masterclass listings on title alone and misses ones that
+    are actually paid. Free/unknown-price and non-Eventbrite events pass
+    through unchanged."""
+    from ranker import EventRanking
+    from sources import fetch_eventbrite_price
+
+    kept = []
+    dropped = 0
+    for event in events:
+        if event.source_type != "eventbrite":
+            kept.append(event)
+            continue
+        price = fetch_eventbrite_price(event.url)
+        if price:
+            store.add_rankings(
+                [event],
+                {
+                    event.uid: EventRanking(
+                        event_id=0,
+                        score=0,
+                        matched_topics=[],
+                        reason=f"Paid event (from {price:.0f}) — filtered out before ranking",
+                    )
+                },
+            )
+            dropped += 1
+        else:
+            kept.append(event)
+    if dropped:
+        log.info("Filtered %d paid Eventbrite events before ranking", dropped)
+    return kept
+
+
 def build_digest(selected) -> str:
     lines = [f"📅 *{len(selected)} new event{'s' if len(selected) != 1 else ''} for you*"]
     for event, ranking in selected:
@@ -142,6 +179,7 @@ def run_cycle(cfg, ranker, notifier, store) -> int:
 
     # Rank only never-seen events (global rank-once cache); enrich just those.
     unranked = [e for e in candidates if not store.is_ranked(e.uid)]
+    unranked = drop_paid_eventbrite(unranked, store)
     if unranked:
         enriched = enrich_luma_descriptions(unranked)
         if enriched:
